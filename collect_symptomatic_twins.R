@@ -31,12 +31,14 @@ code_last_episode <- function(data, vars){
     last_positive_onset <- last_positive_end <- NA
     if (any(xred[[v]], na.rm=T)){
       last_positive_onset <- max(xred$date_updated_at[ xred[[v]] ], na.rm=T)
+      stopifnot(is.Date(last_positive_onset))
       
       if (any(!xred[[v]], na.rm=T)){
         m_neg <- max(xred$date_updated_at[ !xred[[v]] ], na.rm=T)
         last_positive_end <- if(m_neg > last_positive_onset) m_neg else NA
       }
     }
+    
     
     # most recent positive status
     most_recent_positive <- if (any(x[[v]], na.rm=T)) {
@@ -48,7 +50,7 @@ code_last_episode <- function(data, vars){
       last_positive_onset = last_positive_onset,
       last_positive_end = last_positive_end,
       most_recent_positive = most_recent_positive
-    )
+    ) %>% mutate_all(as_date)
   }
   
   # bind in df
@@ -65,13 +67,14 @@ timestamp <- args[1]
 twins_annofile <- args[2]
 mapfile <- args[3]
 wdir <- args[4]
+max_days_past <- args[5]
 
 # load data
-a <- fread(sprintf("%s/cleaned_twins_assessments_export_%s.csv", wdir, timestamp))
-p <- fread(sprintf("%s/cleaned_twins_patients_export_geocodes_%s.csv", wdir, timestamp))
+a <- distinct(fread(sprintf("%s/cleaned_twins_assessments_export_%s.csv", wdir, timestamp)))
+p <- distinct(fread(sprintf("%s/cleaned_twins_patients_export_geocodes_%s.csv", wdir, timestamp)))
 twins_anno <- fread(twins_annofile) %>% 
   setnames(tolower(names(.)))
-id_map <- fread(mapfile) %>% setnames(c("study_no", "app_id"))
+id_map <- distinct(fread(mapfile) %>% setnames(c("study_no", "app_id")))
 
 
 # variables of interest
@@ -103,7 +106,7 @@ p_summary <- p %>%
   mutate(date_updated_at = as_date(updated_at)) %>% 
   group_by(id) %>% 
   dplyr::filter(date_updated_at == max(date_updated_at)) %>% 
-  dplyr::select(id, all_of(p_vars_anno)) %>% 
+  dplyr::select(id, p_vars_anno) %>% 
   left_join(id_map, by=c("id"="app_id")) %>% 
   left_join(
     dplyr::select(
@@ -125,23 +128,22 @@ p_summary <- p %>%
   dplyr::select(study_no, sex_mismatch, birthyear_diff, everything())
 
 # summarise covid info from assessment
-a_summary <-  dplyr::select(a, all_of(a_vars_anno), patient_id) %>% 
+a_summary <-  dplyr::select(a, a_vars_anno, patient_id) %>% 
   group_by(patient_id) %>% 
-  summarise_all(~paste0(unique(.x), collapse = ", ")) %>% 
-  left_join(id_map, by=c("patient_id"="app_id"))
+  summarise_all(~paste0(unique(.x), collapse = ", "))
 
 # summary per symptom and per twin
 candidates <- a %>%
-  left_join(id_map, by=c("patient_id"="app_id")) %>% 
   mutate(date_updated_at = as_date(updated_at)) %>% 
-  group_by(patient_id, study_no) %>%
+  group_by(patient_id) %>%
   nest() %>%
   mutate(
     last_episode = map(data, ~code_last_episode(.x, vars=a_vars_filter))  #KEY STEP
   ) %>%
-  dplyr::select(patient_id, study_no, last_episode) %>%
+  dplyr::select(patient_id, last_episode) %>%
   unnest(last_episode) %>%
-  dplyr::filter(!is.na(last_positive_onset)) %>%    # retain only individuals with at least one symptom in this period
+  dplyr::filter(!is.na(last_positive_onset)) %>%
+  dplyr::filter(last_positive_onset > today() -  max_days_past) %>% # retain only symptomatic periods starting within last 'max_days_past' days
   arrange(desc(last_positive_onset), !(is.na(last_positive_end)), last_positive_end) %>% 
   left_join(p_summary, by=c("patient_id" = "id")) %>%
   left_join(a_summary, by="patient_id") %>%
@@ -155,17 +157,19 @@ candidates_summary <- candidates %>%
             `most recent positive report [any_symptom]` = max(most_recent_positive, na.rm = T),
             `onset last positive period [most recent over symptoms]` = max(last_positive_onset, na.rm = T),
             `onset last positive period [earliest over symptoms]` = min(last_positive_onset, na.rm = T),
-            `any (presumably) active symptom` = any(is.na(last_positive_end))
+            `any active symptom not reported as over` = any(is.na(last_positive_end))
   ) %>% 
-  arrange(desc(n_symptoms),
-          `onset last positive period [earliest over symptoms]`,
-          desc(`most recent positive report [any_symptom]`)) %>%
-  left_join(p_summary, by=c("patient_id" = "id")) %>%
+  arrange(
+    desc(n_symptoms),
+    desc(`most recent positive report [any_symptom]`),
+    desc(`onset last positive period [earliest over symptoms]`)
+  ) %>%
+  left_join(p_summary, by=c("patient_id" = "id", "study_no")) %>%
   left_join(a_summary, by="patient_id") %>% 
-  dplyr::select(study_no, sex_mismatch, birthyear_diff, everything())
+  dplyr::select(study_no, sex_mismatch, birthyear_diff, twinSN_has_multiple_accounts, everything())
 
-write_csv(candidates, path = sprintf("%s/symptomatic_twins_PerTwinPerSymptom_%s.xlsx", wdir, date))
-write_csv(candidates_summary, path = sprintf("%s/symptomatic_twins_PerTwin_%s.xlsx", wdir, date))
+write_csv(candidates, path = sprintf("%s/symptomatic_twins_PerTwinPerSymptom_%s.csv", wdir, timestamp))
+write_csv(candidates_summary, path = sprintf("%s/symptomatic_twins_PerTwin_%s.csv", wdir, timestamp))
 
 cat("\n\n---Formatting completed---\n\n")
 

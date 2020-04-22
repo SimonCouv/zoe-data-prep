@@ -3,6 +3,7 @@ ddir=$2
 wdir=$3
 mapfile=$4
 twins_annofile=$5
+max_days_past=$6
 
 sdir=$(pwd)
 
@@ -39,4 +40,4 @@ echo "---------------------------------------------"
 
 cd $sdir
 
-Rscript collect_symptomatic_twins.R $timestamp $twins_annofile $mapfile $wdir
+Rscript collect_symptomatic_twins.R $timestamp $twins_annofile $mapfile $wdir $max_days_past
