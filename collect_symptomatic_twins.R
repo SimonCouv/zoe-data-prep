@@ -173,15 +173,3 @@ write_csv(candidates_summary, path = sprintf("%s/symptomatic_twins_PerTwin_%s.cs
 
 cat("\n\n---Formatting completed---\n\n")
 
-
-########################################################################
-## generate report
-########################################################################
-
-rmarkdown::render(
-  input = "code/zoe-data-prep/twin_participation_report.Rmd",
-  params = list(timestamp = timestamp, wdir=wdir),
-  output_file = sprintf("twinsuk_participation_report_%s.pdf", timestamp),
-  output_dir = wdir
-)
-
