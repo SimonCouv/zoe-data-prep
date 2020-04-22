@@ -11,7 +11,7 @@ library(data.table)
 library(readr)
 library(purrr)
 library(stringr)
-
+library(tidyselect)
 
 code_last_episode <- function(data, vars){
   # per symptom: get onset and end of most recent episode, and most recent positive report of the symptom
@@ -65,14 +65,13 @@ timestamp <- args[1]
 twins_annofile <- args[2]
 mapfile <- args[3]
 wdir <- args[4]
-max_days_past <- args[5]
 
 # load data
 a <- fread(sprintf("%s/cleaned_twins_assessments_export_%s.csv", wdir, timestamp))
 p <- fread(sprintf("%s/cleaned_twins_patients_export_geocodes_%s.csv", wdir, timestamp))
-twins_anno <- fread(file.path(wdir, twins_annofile)) %>% 
+twins_anno <- fread(twins_annofile) %>% 
   setnames(tolower(names(.)))
-id_map <- fread(file.path(wdir, mapfile)) %>% setnames(c("study_no", "app_id"))
+id_map <- fread(mapfile) %>% setnames(c("study_no", "app_id"))
 
 
 # variables of interest
