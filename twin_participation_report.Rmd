@@ -40,9 +40,9 @@ a <- fread(sprintf("%s/cleaned_twins_assessments_export_%s.csv", params$wdir, pa
 Timestamp: `r params$timestamp`
 
 
-Individuals in TUK with >= 1 assessment: `r n_distinct(a$patient_id)`
+Individuals in TUK with >= 1 assessment (after data cleaning): `r n_distinct(a$patient_id)`
 
-
+\newpage
 # Participation per day
 
 ```{r, out.width="100%", fig.width=10 ,fig.height=12}
@@ -90,6 +90,7 @@ p_global/(p_rank+p_novel)
 
 ```
 
+\newpage
 # Participation matrix
 
 Allows to view the new participants (TwinsUK only) on any given day as
@@ -116,6 +117,7 @@ a %>%
 
 ```
 
+\newpage
 # Retention matrix
 
 Similar to participation matrix but, for each sub-cohort defined by date of first
@@ -146,6 +148,7 @@ a %>%
 
 ```
 
+\newpage
 # Reports per individual
 
 ```{r}
