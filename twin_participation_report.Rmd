@@ -103,7 +103,7 @@ a %>%
   group_by(patient_id) %>% 
   mutate(date_first_log = min(date_updated_at)) %>% 
   ungroup() %>% 
-  dplyr::filter(date_updated_at < today()) %>% 
+  dplyr::filter(date_updated_at < as_date(substr(timestamp, 1, 8))) %>% 
   count(date_updated_at, date_first_log) %>% 
   ggplot(aes(x=date_updated_at, y=date_first_log, fill=n))+
   geom_tile()+
@@ -129,7 +129,7 @@ a %>%
   mutate(date_first_log = min(date_updated_at)) %>% 
   ungroup() %>% 
   count(date_updated_at, date_first_log) %>% 
-  dplyr::filter(date_updated_at < today()) %>% 
+  dplyr::filter(date_updated_at < as_date(substr(timestamp, 1, 8))) %>% 
   group_by(date_first_log) %>% 
   mutate(n_total = max(n),
          retention =n/n_total*100,
