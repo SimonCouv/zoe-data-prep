@@ -25,14 +25,14 @@ library(lubridate)
 library(dplyr)
 library(ggplot2)
 library(data.table)
-
+library(tidyr)
 
 ```
 
 ```{r}
 
 a <- fread(sprintf("%s/cleaned_twins_assessments_export_%s.csv", params$wdir, params$timestamp))
-
+timestamp_date <- as_date(substr(timestamp, 1, 8))
 ```
 
 # Data
@@ -104,8 +104,13 @@ a %>%
   group_by(patient_id) %>% 
   mutate(date_first_log = min(date_updated_at)) %>% 
   ungroup() %>% 
-  dplyr::filter(date_updated_at < as_date(substr(timestamp, 1, 8))) %>% 
-  count(date_updated_at, date_first_log) %>% 
+  count(date_updated_at, date_first_log, .drop=F) %>%
+  complete(
+    date_updated_at = seq(min(date_updated_at, na.rm = T),timestamp_date, by="day"),
+    date_first_log = seq(min(date_first_log, na.rm = T),timestamp_date, by="day"),
+    fill = list(n=0)
+  ) %>% 
+  dplyr::filter(date_updated_at >= date_first_log & date_updated_at < timestamp_date) %>% 
   ggplot(aes(x=date_updated_at, y=date_first_log, fill=n))+
   geom_tile()+
   geom_text(aes(label=n), size=3)+
@@ -125,17 +130,25 @@ submission, expresses the number of reports submitted as percent of sub-cohort s
 
 ```{r, out.width="100%", fig.width=10 ,fig.height=12}
 
-a %>% 
+retention <- a %>% 
   mutate(date_updated_at = as_date(updated_at)) %>% 
   group_by(patient_id) %>% 
   mutate(date_first_log = min(date_updated_at)) %>% 
   ungroup() %>% 
   count(date_updated_at, date_first_log) %>% 
-  dplyr::filter(date_updated_at < as_date(substr(timestamp, 1, 8))) %>% 
+  complete(
+    date_updated_at = seq(min(date_updated_at, na.rm = T),timestamp_date, by="day"),
+    date_first_log = seq(min(date_first_log, na.rm = T),timestamp_date, by="day"),
+    fill = list(n=0)
+  ) %>% 
+  dplyr::filter(date_updated_at >= date_first_log & date_updated_at < timestamp_date) %>% 
   group_by(date_first_log) %>% 
   mutate(n_total = max(n),
          retention =n/n_total*100,
          retention_str = paste0(round(retention), "%")) %>% 
+  ungroup()
+
+retention %>% 
   ggplot(aes(x=date_updated_at, y=date_first_log, fill=retention))+
   geom_tile()+
   geom_text(aes(label=round(retention)), size=3)+
@@ -147,6 +160,8 @@ a %>%
   
 
 ```
+
+
 
 \newpage
 # Reports per individual
