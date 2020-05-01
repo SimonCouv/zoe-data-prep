@@ -93,8 +93,8 @@ max_days_past <- as.numeric(args[5])
 max_carry_forward <- as.numeric(args[6])
 
 # load data
-a <- distinct(fread(sprintf("%s/cleaned_twins_assessments_export_%s.csv", wdir, timestamp)))
-p <- distinct(fread(sprintf("%s/cleaned_twins_patients_export_geocodes_%s.csv", wdir, timestamp)))
+a <- distinct(fread(sprintf("%s/cleaned_twins_assessments_export_%s.csv", wdir, timestamp), data.table=F))
+p <- distinct(fread(sprintf("%s/cleaned_twins_patients_export_geocodes_%s.csv", wdir, timestamp), data.table=F))
 twins_anno <- fread(twins_annofile) %>% 
   setnames(tolower(names(.)))
 id_map <- distinct(fread(mapfile) %>% setnames(c("study_no", "app_id")))
@@ -109,6 +109,10 @@ p_vars_anno <- c("interacted_with_covid", "contact_health_worker", "classic_symp
 a_vars_filter <- c("fever", "persistent_cough", "fatigue_binary", "shortness_of_breath_binary", "delirium", "loss_of_smell")
 a_vars_anno <- c("had_covid_test", "treated_patients_with_covid", "tested_covid_positive")
 
+# Impute negative symptoms from 'healthy' health_status when symptoms are NA
+for (v in a_vars_filter){
+  a[a$health_status == "healthy" & is.na(a[[v]]), v] <- FALSE
+}
 
 ########################################################################
 ## checks
@@ -123,7 +127,7 @@ message("checks passed")
 ## processing
 ########################################################################
 
-multiple_accounts <- id_map %>% distinct() %>% group_by(study_no) %>% dplyr::filter(n()>1) 
+multiple_accounts <- id_map %>% distinct() %>% group_by(study_no) %>% dplyr::filter(dplyr::n()>1) 
 
 # retain only most recent patient info
 p_summary <- p %>% 
@@ -181,7 +185,7 @@ message("summarising symptomatic periods")
 # summarise further over symptoms to get one line per twin
 candidates_summary <- candidates %>% 
   group_by(patient_id, study_no) %>% 
-  summarise(n_symptoms = n(), 
+  summarise(n_symptoms = dplyr::n(), 
             symptoms = paste0(variable, collapse = ", "),
             `most recent positive report [any_symptom]` = max(most_recent_positive, na.rm = T),
             `onset last positive period [most recent over symptoms]` = max(last_positive_onset, na.rm = T),
