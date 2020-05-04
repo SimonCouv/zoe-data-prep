@@ -52,12 +52,12 @@ code_last_episode <- function(data, vars){
     
     
     # start and end dates of the last period during which patient had positive status
-    last_positive_onset <- last_positive_end <- as_date(NA)
+    onset_last_positive_period <- end_of_last_positive_period <- as_date(NA)
     if (any(period_signs)){
       last_pos_period <- max(which(period_signs))
-      last_positive_onset <- x$date_updated_at[min(periods[[last_pos_period]])]
+      onset_last_positive_period <- x$date_updated_at[min(periods[[last_pos_period]])]
       if (last_pos_period != length(periods)){
-        last_positive_end <- x$date_updated_at[max(periods[[last_pos_period]])]
+        end_of_last_positive_period <- x$date_updated_at[max(periods[[last_pos_period]])]
       }
     }
     
@@ -68,8 +68,8 @@ code_last_episode <- function(data, vars){
     
     # collect results
     l[[v]] <- list(
-      last_positive_onset = last_positive_onset,
-      last_positive_end = last_positive_end,
+      onset_last_positive_period = onset_last_positive_period,
+      end_of_last_positive_period = end_of_last_positive_period,
       most_recent_positive = most_recent_positive
     ) 
   }
@@ -106,7 +106,7 @@ p_vars_anno <- c("interacted_with_covid", "contact_health_worker", "classic_symp
                  "has_lung_disease", "is_smoker", "does_chemotherapy", 
                  "has_cancer", "has_kidney_disease", "already_had_covid",
                  "interacted_patients_with_covid", "classic_symptoms_days_ago")
-a_vars_filter <- c("fever", "persistent_cough", "fatigue_binary", "shortness_of_breath_binary", "delirium", "loss_of_smell")
+a_vars_filter <- c("fever", "persistent_cough", "fatigue_binary", "shortness_of_breath_binary", "delirium", "loss_of_smell", "negative_health_status")
 a_vars_anno <- c("had_covid_test", "treated_patients_with_covid", "tested_covid_positive")
 
 # Impute negative symptoms from 'healthy' health_status when symptoms are NA
@@ -128,6 +128,9 @@ message("checks passed")
 ########################################################################
 
 multiple_accounts <- id_map %>% distinct() %>% group_by(study_no) %>% dplyr::filter(dplyr::n()>1) 
+
+# negative health status, will be processed as a symptom
+a$negative_health_status <- a$health_status == "not_healthy"
 
 # retain only most recent patient info
 p_summary <- p %>% 
@@ -173,9 +176,9 @@ candidates <- a %>%
   ) %>%
   dplyr::select(patient_id, last_episode) %>%
   unnest(last_episode) %>%
-  dplyr::filter(!is.na(last_positive_onset)) %>%
-  dplyr::filter(last_positive_onset > as_date(substr(timestamp, 1, 8)) -  max_days_past) %>% # retain only symptomatic periods starting within last 'max_days_past' days
-  arrange(desc(last_positive_onset), !(is.na(last_positive_end)), last_positive_end) %>% 
+  dplyr::filter(!is.na(onset_last_positive_period)) %>%
+  dplyr::filter(onset_last_positive_period > as_date(substr(timestamp, 1, 8)) -  max_days_past) %>% # retain only symptomatic periods starting within last 'max_days_past' days
+  arrange(desc(onset_last_positive_period), !(is.na(end_of_last_positive_period)), end_of_last_positive_period) %>% 
   left_join(p_summary, by=c("patient_id" = "id")) %>%
   left_join(a_summary, by="patient_id") %>%
   dplyr::select(study_no, everything())
@@ -183,19 +186,21 @@ candidates <- a %>%
 message("summarising symptomatic periods")
 
 # summarise further over symptoms to get one line per twin
+# ignore 'negative_health_status' when summarising, to maintain specificity
 candidates_summary <- candidates %>% 
   group_by(patient_id, study_no) %>% 
+  dplyr::filter(variable != "negative_health_status") %>% 
   summarise(n_symptoms = dplyr::n(), 
             symptoms = paste0(variable, collapse = ", "),
             `most recent positive report [any_symptom]` = max(most_recent_positive, na.rm = T),
-            `onset last positive period [most recent over symptoms]` = max(last_positive_onset, na.rm = T),
-            `onset last positive period [earliest over symptoms]` = min(last_positive_onset, na.rm = T),
-            `any active symptom not reported as over` = any(is.na(last_positive_end))
+            `onset of last positive period [most recent over symptoms]` = max(onset_last_positive_period, na.rm = T),
+            `onset of last positive period [earliest over symptoms]` = min(onset_last_positive_period, na.rm = T),
+            `any active symptom not reported as over` = any(is.na(end_of_last_positive_period))
   ) %>% 
   arrange(
     desc(n_symptoms),
     desc(`most recent positive report [any_symptom]`),
-    desc(`onset last positive period [earliest over symptoms]`)
+    desc(`onset of last positive period [earliest over symptoms]`)
   ) %>%
   left_join(p_summary, by=c("patient_id" = "id", "study_no")) %>%
   left_join(a_summary, by="patient_id") %>% 
@@ -205,4 +210,5 @@ write_csv(candidates, path = sprintf("%s/symptomatic_twins_PerTwinPerSymptom_%s.
 write_csv(candidates_summary, path = sprintf("%s/symptomatic_twins_PerTwin_%s.csv", wdir, timestamp))
 
 cat("\n\n---Formatting completed---\n\n")
+
 
