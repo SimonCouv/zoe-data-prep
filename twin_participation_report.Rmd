@@ -113,7 +113,7 @@ a %>%
   dplyr::filter(date_updated_at >= date_first_log & date_updated_at < timestamp_date) %>% 
   ggplot(aes(x=date_updated_at, y=date_first_log, fill=n))+
   geom_tile()+
-  geom_text(aes(label=n), size=3)+
+  geom_text(aes(label=n), size=2)+
   theme_bw()+
   ylab("date of first report")+
   xlab("report day")+
