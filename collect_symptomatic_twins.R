@@ -252,7 +252,7 @@ new_onset_summary <- new_onset %>%
   ) %>% 
   arrange(desc(n_new_onset), n_prior)
 
-write_csv(new_onset_summary, here::here(sprintf("results/datateam/new_onset_%s.csv", timestamp)))
+write_csv(new_onset_summary, file.path(wdir, sprintf("new_onset_%s.csv", timestamp)))
 
 p_symptom_count <- new_onset_summary %>% 
   ungroup() %>% 
@@ -286,7 +286,7 @@ p_new_onset_history <-new_onset_summary %>%
   geom_vline(xintercept=as.numeric(timestamp_date-2)-0.5, linetype=2)+
   xlab("assessment date")
 
-plot_path <- here::here(sprintf("results/datateam/new_onset_plots_%s.RData", timestamp))
+plot_path <- file.path(wdir, sprintf("new_onset_plots_%s.RData", timestamp))
 save(p_symptom_count, p_new_onset_history, file = plot_path)
 
 ########################################################################

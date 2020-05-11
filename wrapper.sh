@@ -8,9 +8,6 @@ max_carry_forward=$7
 
 sdir=$(pwd)
 
-source ~/local/venv/3.6/bin/activate
-# python3 -m pip install numpy
-
 printf "\n\n\n\n\n"
 echo "-------------------------------------------------------------------------"
 echo "subset_twins.R"
