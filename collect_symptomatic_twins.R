@@ -286,8 +286,8 @@ p_new_onset_history <-new_onset_summary %>%
   geom_vline(xintercept=as.numeric(timestamp_date-2)-0.5, linetype=2)+
   xlab("assessment date")
 
-ggsave(plot = p_symptom_count, file.path(wdir, sprintf("new_onset_symptom_count_%s.svg", timestamp)))
 ggsave(plot = p_new_onset_history, file.path(wdir, sprintf("new_onset_history_%s.svg", timestamp)), width = 10, height = 15)
+ggsave(plot = p_symptom_count, file.path(wdir, sprintf("new_onset_symptom_count_%s.svg", timestamp)))
 
 ########################################################################
 ## symptomatic periods
