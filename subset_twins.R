@@ -40,8 +40,10 @@ setkey(id_map, app_id)
 
 patfile <- paste0("patients_export_geocodes_", timestamp, ".csv")
 assessfile <- paste0("assessments_export_", timestamp, ".csv")
+testfile <- paste0("covid_test_export_", timestamp, ".csv")
 twins_patfile <- paste0("twins_", patfile)
 twins_assessfile <- paste0("twins_", assessfile)
+twins_testfile <- paste0("twins_", testfile)
 
 print("Subset to TwinsUK participants only")
 
@@ -71,3 +73,18 @@ if (file.exists(twins_assessfile)){
   assessment[, TwinSN:=NULL]  
   fwrite(assessment, file = twins_assessfile, quote = "auto")
 }
+
+# test result file
+if (file.exists(twins_testfile)){
+  cat("There is an existing subsetted test result file with this timestamp. No action taken.\n")
+} else {
+  cat("subsetting test result file\n")
+
+  test_full <- fread(file.path(ddir,testfile),data.table=T, colClasses="character")
+  setkey(test_full, patient_id)
+  test <- test_full[id_map]
+  rm(test_full)
+  test[, TwinSN:=NULL]
+  fwrite(test, file = twins_testfile, quote = "auto")
+}
+
