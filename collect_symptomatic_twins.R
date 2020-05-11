@@ -197,7 +197,7 @@ multiple_accounts <- id_map %>% distinct() %>% group_by(study_no) %>% dplyr::fil
 p_summary <- p %>% 
   group_by(id) %>% 
   dplyr::filter(date_updated_at == max(date_updated_at)) %>% 
-  dplyr::select(study_no, p_vars_anno) %>% 
+  dplyr::select(id, study_no, p_vars_anno) %>% 
   left_join(
     dplyr::select(
       twins_anno, 
@@ -215,7 +215,7 @@ p_summary <- p %>%
     twinSN_has_multiple_accounts = study_no %in% multiple_accounts$study_no
   ) %>% 
   dplyr::select(-sex_phenobase2) %>% 
-  dplyr::select(study_no, sex_mismatch, birthyear_diff, everything())
+  dplyr::select(id, study_no, sex_mismatch, birthyear_diff, everything())
 
 # summarise covid info from assessment
 a_summary <- a %>% 
@@ -286,8 +286,8 @@ p_new_onset_history <-new_onset_summary %>%
   geom_vline(xintercept=as.numeric(timestamp_date-2)-0.5, linetype=2)+
   xlab("assessment date")
 
-plot_path <- file.path(wdir, sprintf("new_onset_plots_%s.RData", timestamp))
-save(p_symptom_count, p_new_onset_history, file = plot_path)
+ggsave(plot = p_symptom_count, file.path(wdir, sprintf("new_onset_symptom_count_%s.svg", timestamp)))
+ggsave(plot = p_new_onset_history, file.path(wdir, sprintf("new_onset_history_%s.svg", timestamp)), width = 10, height = 15)
 
 ########################################################################
 ## symptomatic periods
