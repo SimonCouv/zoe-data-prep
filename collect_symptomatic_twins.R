@@ -139,9 +139,10 @@ args <- commandArgs(trailingOnly = TRUE)
 timestamp <- args[1]
 twins_annofile <- args[2]
 mapfile <- args[3]
-wdir <- args[4]
-max_days_past <- as.numeric(args[5])
-max_carry_forward <- as.numeric(args[6])
+zoe_preds_file <- args[4]
+wdir <- args[5]
+max_days_past <- as.numeric(args[6])
+max_carry_forward <- as.numeric(args[7])
 
 # load data
 a <- distinct(fread(sprintf("%s/cleaned_twins_assessments_export_%s.csv", wdir, timestamp), data.table=F))
@@ -160,9 +161,12 @@ p_vars_anno <- c("interacted_with_covid", "contact_health_worker", "classic_symp
                  "interacted_patients_with_covid", "classic_symptoms_days_ago")
 a_vars_filter <- c("fever", "persistent_cough", "fatigue_binary", "shortness_of_breath_binary", "delirium", "loss_of_smell")
 a_vars_anno <- c("had_covid_test", "treated_patients_with_covid", "tested_covid_positive")
+binary_symptoms <- c('persistent_cough', 'delirium','fever', 'diarrhoea', 'abdominal_pain', 'chest_pain', 'hoarse_voice', 'skipped_meals', 'loss_of_smell', 'headache', 'sore_throat')
+multicat_symptoms <- c('shortness_of_breath', 'fatigue')
+collapsed_symptoms <- c('fatigue_binary', 'shortness_of_breath_binary')
 
 # Impute negative symptoms from 'healthy' health_status when symptoms are NA
-for (v in a_vars_filter){
+for (v in c(multicat_symptoms, binary_symptoms, collapsed_symptoms)){
   a[a$health_status == "healthy" & is.na(a[[v]]), v] <- FALSE
 }
 
@@ -171,6 +175,9 @@ for (v in a_vars_filter){
 a <- dplyr::filter(a, updated_at != "-- ::") %>% mutate(date_updated_at = as_date(updated_at)) %>% 
   left_join(id_map, by=c("patient_id"="app_id"))
 p <- dplyr::filter(p, updated_at != "-- ::") %>% mutate(date_updated_at = as_date(updated_at)) %>% 
+  left_join(id_map, by=c("id"="app_id"))
+
+zoe <- read_csv(zoe_preds_file) %>% 
   left_join(id_map, by=c("id"="app_id"))
 
 ########################################################################
@@ -288,6 +295,34 @@ p_new_onset_history <-new_onset_summary %>%
 
 ggsave(plot = p_new_onset_history, file.path(wdir, sprintf("new_onset_history_%s.svg", timestamp)), width = 10, height = 15)
 ggsave(plot = p_symptom_count, file.path(wdir, sprintf("new_onset_symptom_count_%s.svg", timestamp)))
+
+zoe_plotdat <- zoe %>% 
+  top_n(40, p_predicted_covid) %>% 
+  dplyr::select(study_no, matches("predicted_covid")) %>% 
+  left_join(a) %>% 
+  mutate_at(vars(binary_symptoms), as.numeric) %>%
+  mutate(
+    shortness_of_breath = recode(na_if(shortness_of_breath, ""), 
+                                 'no'=0,'mild'=1, 'significant'=2, 'severe'=3, .missing=0)/3,
+    fatigue = recode(na_if(fatigue, ""), 'no'=0,'mild'=1, 'severe'=2, .missing=0)/2
+  ) %>%
+  dplyr::select(date_updated_at, study_no, all_symptoms, matches("predicted_covid")) %>% 
+  gather(symptom, value, all_symptoms) %>% 
+  arrange(study_no, symptom) %>% 
+  mutate(sn_anno = sprintf("%d [p_zoe=%s]", study_no, round(p_predicted_covid, 2))) %>%
+  mutate(sn_anno = fct_reorder(sn_anno, -p_predicted_covid)) 
+
+# top 40
+p_zoe_40 <- zoe_plotdat %>% 
+  ggplot(aes(x=date_updated_at, y=symptom, fill=value))+
+  geom_tile()+
+  facet_wrap(~sn_anno, ncol=4)+
+  scale_fill_gradient(name="symptom severity", low = "green", high = "red")+
+  theme_bw()+
+  geom_vline(xintercept=as.numeric(timestamp_date-2)-0.5, linetype=2)+
+  xlab("assessment date")
+
+ggsave(plot = p_zoe_40, file.path(wdir, sprintf("zoe_top40_history_%s.svg", timestamp)), width = 10, height = 15)
 
 ########################################################################
 ## symptomatic periods

@@ -37,11 +37,20 @@ python3 $sdir/pipeline.py -t GB \
 
 printf "\n\n\n\n\n"
 echo "-------------------------------------------------------------------------"
+echo "Zoe predictions"
+echo "-------------------------------------------------------------------------"
+printf "\n\n\n\n\n"
+
+zoe_preds="Zoe_RF2_predictions_$timestamp.csv"
+rf2_joblib="$wdir/rf_joblibs/Grouped_RF_2_12_05.joblib"
+python3 $sdir/rf_preds.py $tassc $tpatc $zoe_preds $timestamp $rf2_joblib 2
+
+printf "\n\n\n\n\n"
+echo "-------------------------------------------------------------------------"
 echo "collect_symptomatic_twins.R"
 echo "-------------------------------------------------------------------------"
 printf "\n\n\n\n\n"
 
-
 cd $sdir
 
-Rscript collect_symptomatic_twins.R $timestamp $twins_annofile $mapfile $wdir $max_days_past $max_carry_forward
+Rscript collect_symptomatic_twins.R $timestamp $twins_annofile $mapfile $zoe_preds $wdir $max_days_past $max_carry_forward
