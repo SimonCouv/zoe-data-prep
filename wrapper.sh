@@ -37,6 +37,17 @@ python3 $sdir/pipeline.py -t GB \
 
 printf "\n\n\n\n\n"
 echo "-------------------------------------------------------------------------"
+echo "link twin ID for sharing (only)"
+echo "-------------------------------------------------------------------------"
+printf "\n\n\n\n\n"
+
+tpatc_linked="linked_$tpatc"
+tassc_linked="linked_$tassc"
+
+python3 link_twins_anno.py $tpatc $tassc $tpatc_linked $tassc_linked $mapfile
+
+printf "\n\n\n\n\n"
+echo "-------------------------------------------------------------------------"
 echo "Zoe predictions"
 echo "-------------------------------------------------------------------------"
 printf "\n\n\n\n\n"
