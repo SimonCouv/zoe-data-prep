@@ -44,7 +44,9 @@ printf "\n\n\n\n\n"
 tpatc_linked="linked_$tpatc"
 tassc_linked="linked_$tassc"
 
-python3 link_twins_anno.py $tpatc $tassc $tpatc_linked $tassc_linked $mapfile
+python3 $sdir/link_twins_anno.py $tpatc $tassc $tpatc_linked $tassc_linked $mapfile
+cp $tpatc_linked $tassc_linked $ddir/Twin_Extract
+echo "twin ID linking complete; files copied to $ddir/Twin_Extract."
 
 printf "\n\n\n\n\n"
 echo "-------------------------------------------------------------------------"
@@ -52,9 +54,13 @@ echo "Zoe predictions"
 echo "-------------------------------------------------------------------------"
 printf "\n\n\n\n\n"
 
+
 zoe_preds="Zoe_RF2_predictions_$timestamp.csv"
-rf2_joblib="$wdir/rf_joblibs/Grouped_RF_2_12_05.joblib"
-python3 $sdir/rf_preds.py $tassc $tpatc $zoe_preds $timestamp $rf2_joblib 2
+rf2_joblib="rf_joblibs/Grouped_RF_2_12_05.joblib"
+
+echo $tassc $tpatc $zoe_preds $timestamp $rf2_joblib
+
+python3 $sdir/rf_preds.py $tassc $tpatc $zoe_preds $timestamp $rf2_joblib 2 $mapfile
 
 printf "\n\n\n\n\n"
 echo "-------------------------------------------------------------------------"

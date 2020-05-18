@@ -49,7 +49,7 @@ print("Subset to TwinsUK participants only")
 
 # patient file
 if (file.exists(twins_patfile)){
-  cat("There is an existing subsetted patient file with this timestamp. No action taken.\n")
+  cat("There is an existing subsetted patient file with this timestamp", timestamp, ". Existing file preserved, no new output files generated.\n")
 } else {
   cat("subsetting patient file\n")
   patient_full <- fread(file.path(ddir,patfile), data.table=T, colClasses="character")
@@ -62,7 +62,7 @@ if (file.exists(twins_patfile)){
 
 # assessment file
 if (file.exists(twins_assessfile)){
-  cat("There is an existing subsetted assessment file with this timestamp. No action taken.\n")
+  cat("There is an existing subsetted assessment file with this timestamp", timestamp, ". Existing file preserved, no new output files generated.\n")
 } else {
   cat("subsetting assessment file\n")
 
@@ -76,7 +76,7 @@ if (file.exists(twins_assessfile)){
 
 # test result file
 if (file.exists(twins_testfile)){
-  cat("There is an existing subsetted test result file with this timestamp. No action taken.\n")
+  cat("There is an existing subsetted test result file with this timestamp", timestamp, ". Existing file preserved, no new output files generated.\n")
 } else {
   cat("subsetting test result file\n")
 

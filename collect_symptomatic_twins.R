@@ -177,8 +177,7 @@ a <- dplyr::filter(a, updated_at != "-- ::") %>% mutate(date_updated_at = as_dat
 p <- dplyr::filter(p, updated_at != "-- ::") %>% mutate(date_updated_at = as_date(updated_at)) %>% 
   left_join(id_map, by=c("id"="app_id"))
 
-zoe <- read_csv(zoe_preds_file) %>% 
-  left_join(id_map, by=c("id"="app_id"))
+zoe <- read_csv(file.path(wdir, zoe_preds_file)) 
 
 ########################################################################
 ## checks
@@ -293,8 +292,12 @@ p_new_onset_history <-new_onset_summary %>%
   geom_vline(xintercept=as.numeric(timestamp_date-2)-0.5, linetype=2)+
   xlab("assessment date")
 
+message("generating Zoe prediction plots")
+
 ggsave(plot = p_new_onset_history, file.path(wdir, sprintf("new_onset_history_%s.svg", timestamp)), width = 10, height = 15)
 ggsave(plot = p_symptom_count, file.path(wdir, sprintf("new_onset_symptom_count_%s.svg", timestamp)))
+
+zoe_symptoms <- c(binary_symptoms, multicat_symptoms)
 
 zoe_plotdat <- zoe %>% 
   top_n(40, p_predicted_covid) %>% 
@@ -306,8 +309,8 @@ zoe_plotdat <- zoe %>%
                                  'no'=0,'mild'=1, 'significant'=2, 'severe'=3, .missing=0)/3,
     fatigue = recode(na_if(fatigue, ""), 'no'=0,'mild'=1, 'severe'=2, .missing=0)/2
   ) %>%
-  dplyr::select(date_updated_at, study_no, all_symptoms, matches("predicted_covid")) %>% 
-  gather(symptom, value, all_symptoms) %>% 
+  dplyr::select(date_updated_at, study_no, zoe_symptoms, matches("predicted_covid")) %>% 
+  gather(symptom, value, zoe_symptoms) %>% 
   arrange(study_no, symptom) %>% 
   mutate(sn_anno = sprintf("%d [p_zoe=%s]", study_no, round(p_predicted_covid, 2))) %>%
   mutate(sn_anno = fct_reorder(sn_anno, -p_predicted_covid)) 
@@ -322,7 +325,7 @@ p_zoe_40 <- zoe_plotdat %>%
   geom_vline(xintercept=as.numeric(timestamp_date-2)-0.5, linetype=2)+
   xlab("assessment date")
 
-ggsave(plot = p_zoe_40, file.path(wdir, sprintf("zoe_top40_history_%s.svg", timestamp)), width = 10, height = 15)
+ggsave(plot = p_zoe_40, file.path(wdir, sprintf("Zoe_top40_history_%s.svg", timestamp)), width = 10, height = 15)
 
 ########################################################################
 ## symptomatic periods

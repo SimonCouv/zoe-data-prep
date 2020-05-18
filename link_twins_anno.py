@@ -1,4 +1,5 @@
 import pandas as pd
+import sys
 
 p_path = sys.argv[1]
 a_path = sys.argv[2]
@@ -15,6 +16,6 @@ al = a.merge(id_map, left_on="patient_id", right_on="App_ID", how="inner")
 pl = p.merge(id_map, left_on="id", right_on="App_ID", how="inner")
 
 al.to_csv(al_path, index=False)
-al.to_csv(al_path, index=False)
+pl.to_csv(pl_path, index=False)
 
 

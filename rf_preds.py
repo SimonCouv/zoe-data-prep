@@ -5,7 +5,7 @@ import numpy as np
 import sklearn
 import datetime
 import sys
-
+pd.show_versions()
 #####################
 # SETUP
 #####################
@@ -15,7 +15,8 @@ p_path = sys.argv[2]
 predfile = sys.argv[3]
 timestamp = sys.argv[4]
 rf2_filename= sys.argv[5]
-N= sys.argv[6]
+N= int(sys.argv[6])
+mapfile = sys.argv[7]
 
 timestamp_date = datetime.datetime.strptime(timestamp[0:8], '%Y%m%d')
 clf, idx_optimal, idx_high_sens, idx_high_spec, thresholds, fpr, tpr, FEATURES, ALL_SYMPTOMS, PAT_FEATURES = joblib.load(rf2_filename)
@@ -42,6 +43,10 @@ idx = idx_high_sens
 a = pd.read_csv(a_path, low_memory=False)
 p = pd.read_csv(p_path, low_memory=False)
 
+id_map = pd.read_csv(mapfile).drop_duplicates()
+id_map.columns = ['study_no', 'app_id']
+print("loading complete")
+
 #####################
 # PRE-PROCESSING
 #####################
@@ -60,12 +65,12 @@ a["date_updated_at"] = pd.to_datetime(a["updated_at"])
 a_recent = a.loc[timestamp_date-a["date_updated_at"]< pd.Timedelta(N, unit="days")]
 
 # calculated values
-p["prisma"] = (p["age"]>85).astype(int) + (p["gender"]==0).astype(int) + p["needs_help"].astype(int) + \
-              p["housebound_problems"].astype(int) + p["help_available"].astype(int) + p["mobility_aid"].astype(int)
+p["prisma"] = (p["age"]>85).astype(int) + (p["gender"]==0).astype(int) + p["needs_help"].astype(int) + p["housebound_problems"].astype(int) + p["help_available"].astype(int) + p["mobility_aid"].astype(int)
 p["hcw"] = p[["have_worked_in_hospital_care_facility", "have_worked_in_hospital_clinic",
               "have_worked_in_hospital_home_health", "have_worked_in_hospital_inpatient", "have_worked_in_hospital_other",
               "have_worked_in_hospital_outpatient", "have_worked_in_hospital_school_clinic",
               "contact_health_worker"]].any(axis=1, skipna=True)
+
 
 # summaries per individual
 af = ALL_SYMPTOMS + ['patient_id']
@@ -77,6 +82,8 @@ psum = p[pf].drop_duplicates()
 # model input
 X_test = psum.merge(asum, left_on="id", right_on="patient_id", how="inner")
 
+print("pre-processing complete")
+
 #####################
 # RUN MODEL
 #####################
@@ -87,5 +94,8 @@ X_test.loc[:, 'predicted_covid_opt'] = X_test['p_predicted_covid']>thresholds[id
 X_test.loc[:, 'predicted_covid_sens'] = X_test['p_predicted_covid']>thresholds[idx_high_sens]
 X_test = X_test.sort_values("p_predicted_covid", ascending=False)
 
+X_test = X_test.merge(id_map, left_on='id', right_on='app_id', how='inner')
+
 X_test.to_csv(predfile, index=False)
 
+print("prediction model ran successfully")
