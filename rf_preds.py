@@ -13,10 +13,13 @@ pd.show_versions()
 a_path = sys.argv[1]
 p_path = sys.argv[2]
 predfile = sys.argv[3]
-timestamp = sys.argv[4]
-rf2_filename= sys.argv[5]
-N= int(sys.argv[6])
-mapfile = sys.argv[7]
+new_onsetfile = sys.argv[4]
+mapfile = sys.argv[5]
+timestamp = sys.argv[6]
+rf2_filename = sys.argv[7]
+onset_window_length = int(sys.argv[8])
+max_prior = int(sys.argv[9])
+min_new_onset = int(sys.argv[10])
 
 timestamp_date = datetime.datetime.strptime(timestamp[0:8], '%Y%m%d')
 clf, idx_optimal, idx_high_sens, idx_high_spec, thresholds, fpr, tpr, FEATURES, ALL_SYMPTOMS, PAT_FEATURES = joblib.load(rf2_filename)
@@ -45,6 +48,9 @@ p = pd.read_csv(p_path, low_memory=False)
 
 id_map = pd.read_csv(mapfile).drop_duplicates()
 id_map.columns = ['study_no', 'app_id']
+
+new_onset = pd.read_csv(new_onsetfile)
+
 print("loading complete")
 
 #####################
@@ -58,11 +64,16 @@ a.replace(to_replace={'shortness_of_breath': ['no', 'mild', 'significant', 'seve
                  'fatigue': [0, 1, 2]},
           inplace=True)
 
-# subset to N days before timestamp date
+# subset to onset_window_length days before timestamp date
 # a["date_updated_at"] = datetime.datetime.strptime(a["updated_at"].values, "%Y-%m-%d %H:%M:%S")
 a = a.loc[~a["updated_at"].str.contains("--")]
 a["date_updated_at"] = pd.to_datetime(a["updated_at"])
-a_recent = a.loc[timestamp_date-a["date_updated_at"]< pd.Timedelta(N, unit="days")]
+a_recent = a.loc[timestamp_date-a["date_updated_at"]< pd.Timedelta(onset_window_length, unit="days")]
+
+# subset to new onset twins
+new_onset_keep = new_onset.loc[(new_onset['n_new_onset'] >= min_new_onset) &
+(new_onset['n_prior'] <= max_prior)]
+a_recent = a_recent.loc[a_recent['patient_id'].isin(new_onset['patient_id'])]
 
 # calculated values
 p["prisma"] = (p["age"]>85).astype(int) + (p["gender"]==0).astype(int) + p["needs_help"].astype(int) + p["housebound_problems"].astype(int) + p["help_available"].astype(int) + p["mobility_aid"].astype(int)
@@ -71,10 +82,9 @@ p["hcw"] = p[["have_worked_in_hospital_care_facility", "have_worked_in_hospital_
               "have_worked_in_hospital_outpatient", "have_worked_in_hospital_school_clinic",
               "contact_health_worker"]].any(axis=1, skipna=True)
 
-
 # summaries per individual
 af = ALL_SYMPTOMS + ['patient_id']
-asum = a_recent[af].groupby('patient_id').agg(lambda x: x.sum()/N)
+asum = a_recent[af].groupby('patient_id').agg(lambda x: x.sum()/onset_window_length)
 
 pf = PAT_FEATURES + ['id']
 psum = p[pf].drop_duplicates()

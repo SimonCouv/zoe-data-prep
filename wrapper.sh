@@ -3,8 +3,9 @@ ddir=$2
 wdir=$3
 mapfile=$4
 twins_annofile=$5
-max_days_past=$6
-max_carry_forward=$7
+onset_window_length=$6
+stat_window_length=$7
+
 
 sdir=$(pwd)
 
@@ -50,24 +51,39 @@ echo "twin ID linking complete; files copied to $ddir/Twin_Extract."
 
 printf "\n\n\n\n\n"
 echo "-------------------------------------------------------------------------"
-echo "Zoe predictions"
-echo "-------------------------------------------------------------------------"
-printf "\n\n\n\n\n"
-
-
-zoe_preds="Zoe_RF2_predictions_$timestamp.csv"
-rf2_joblib="rf_joblibs/Grouped_RF_2_12_05.joblib"
-
-echo $tassc $tpatc $zoe_preds $timestamp $rf2_joblib
-
-python3 $sdir/rf_preds.py $tassc $tpatc $zoe_preds $timestamp $rf2_joblib 2 $mapfile
-
-printf "\n\n\n\n\n"
-echo "-------------------------------------------------------------------------"
 echo "collect_symptomatic_twins.R"
 echo "-------------------------------------------------------------------------"
 printf "\n\n\n\n\n"
 
 cd $sdir
 
-Rscript collect_symptomatic_twins.R $timestamp $twins_annofile $mapfile $zoe_preds $wdir $max_days_past $max_carry_forward
+Rscript collect_symptomatic_twins.R $timestamp $twins_annofile $mapfile \
+$wdir $onset_window_length $stat_window_length 'any'
+
+printf "\n\n\n\n\n"
+echo "-------------------------------------------------------------------------"
+echo "Zoe predictions"
+echo "-------------------------------------------------------------------------"
+printf "\n\n\n\n\n"
+
+cd $wdir
+
+new_onsetfile="new_onset_$timestamp.csv"
+zoe_preds="Zoe_RF2_predictions_$timestamp.csv"
+rf2_joblib="rf_joblibs/Grouped_RF_2_12_05.joblib"
+
+echo $tassc $tpatc $zoe_preds $timestamp $rf2_joblib
+
+python3 $sdir/rf_preds.py $tassc $tpatc $zoe_preds $new_onsetfile $mapfile \
+$timestamp $rf2_joblib $onset_window_length 0 1
+
+printf "\n\n\n\n\n"
+echo "-------------------------------------------------------------------------"
+echo "plot results"
+echo "-------------------------------------------------------------------------"
+printf "\n\n\n\n\n"
+
+cd $sdir
+Rscript plot_new_onset_histories.R $timestamp $mapfile $zoe_preds $wdir
+
+echo 'Wrapper script completed.'

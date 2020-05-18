@@ -15,91 +15,25 @@ library(tidyselect)
 library(ggplot2)
 library(forcats)
 
-code_last_episode <- function(data, vars){
-  # per symptom: get onset and end of most recent episode, and most recent positive report of the symptom
-  
-  l <- list()
-  for (v in vars){
-    # print(v)
-    
-    # subset, sort, drop NA
-    x <- data[, c(v, "date_updated_at"), drop=T]
-    x <- x[order(x$date_updated_at),] %>% drop_na()
-    
-    # split periods according to positive/negative status, and respecting a
-    # maximal interval between assessments in the same period of 'max_carry_forward' days
-    periods <- list()
-    period_signs <- c()
-    period <- 1
-    
-    if (nrow(x) > 1){
-      for (i in 1:(nrow(x)-1)){
-        # browser()
-        
-        t2 <- x$date_updated_at[i+1] 
-        t1 <- x$date_updated_at[i]
-        if (t2 - t1 < max_carry_forward & x[[v]][i+1] == x[[v]][i]){
-          period <- c(period, i+1)
-        } else {
-          periods <- c(periods, list(period))
-          period_signs <- c(period_signs, x[[v]][i])
-          period <- i+1
-        }
-        if (i+1==nrow(x)) {periods <- c(periods, list(period)); period_signs <- c(period_signs, x[[v]][i+1])}
-      }
-    } else {
-      periods <- c(periods, list(period))
-      period_signs <- c(period_signs, x[[v]])
-    }
-    
-    
-    # start and end dates of the last period during which patient had positive status
-    onset_last_positive_period <- end_of_last_positive_period <- as_date(NA)
-    if (any(period_signs)){
-      last_pos_period <- max(which(period_signs))
-      onset_last_positive_period <- x$date_updated_at[min(periods[[last_pos_period]])]
-      if (last_pos_period != length(periods)){
-        end_of_last_positive_period <- x$date_updated_at[max(periods[[last_pos_period]])]
-      }
-    }
-    
-    # most recent positive status
-    most_recent_positive <- if (any(x[[v]], na.rm=T)) {
-      max(x$date_updated_at[ x[[v]] ], na.rm=T)
-    } else as_date(NA)
-    
-    # collect results
-    l[[v]] <- list(
-      onset_last_positive_period = onset_last_positive_period,
-      end_of_last_positive_period = end_of_last_positive_period,
-      most_recent_positive = most_recent_positive
-    ) 
-  }
-  
-  # bind in df
-  res <- rbindlist(l)
-  res[, variable := vars]
-}
-
 is_new_onset <- function(data, symptoms, day_t, onset_window_length=2, 
-                         stat_window_length=12){
+                         stat_window_length=12, prior_status_method = c("last", "any")){
   
-  # any positive report in <window_length> days before <day_t>
+  prior_status_method <- match.arg(prior_status_method)
+  
+  #### any positive report in <window_length> days before <day_t> -------------
   data_onset_in <- data[data$date_updated_at + onset_window_length >= day_t, symptoms]
   pos_in_window <- apply(data_onset_in, 2, function(x)any(x,na.rm = T))
   
-  # status before window
+  ### prior status ----------------------------------------------------
   # allow for reporting dates to differ between symptoms (-> drop_na per symptom in for loop)
-  # status is negative, unless the last non-NA assessment within the 
-  #   status-defining window is positive.
   status_before <- rep(FALSE, length(symptoms))
   names(status_before) <- symptoms
   for (v in symptoms){
     
     # take only non-NA assessments into account
-    # remark: relies on setting symptoms NA -> F in healthy assessments) !!!
-    x <- data[, c(v, "date_updated_at")]
-    x <- x[!is.na(x[[v]]),]
+    # remark: relies on setting symptoms NA -> FALSE in healthy assessments) !!!
+    x <- data[, c(v, "date_updated_at")]   # symptom and date
+    x <- x[!is.na(x[[v]]),]  # drop NA
     
     # get assessments dates within status-defining window
     d <- x$date_updated_at
@@ -107,14 +41,19 @@ is_new_onset <- function(data, symptoms, day_t, onset_window_length=2,
     d2 <- d[d < day_t - onset_window_length]
     d_stat <- intersect(d1, d2)
     
-    # if there are assessments within the status-defining window, the last one defines status
     if (length(d_stat) > 0){
-      status_before[v] <- x[d == max(d_stat), v, drop=T]
+      if (prior_status_method == "last") {
+        status_before[v] <- x[d == max(d_stat), v, drop=T]
+      } else if (prior_status_method == "any"){
+        status_before[v] <- any(x[d %in% d_stat, v, drop=T], na.rm = T)
+      }
     }
   }
   
+  ### summary tibble ----------------------------------------------------
   new_onset <- pos_in_window & !(status_before)
   tibble(symptoms, status_before, pos_in_window, new_onset)
+  
   # debug
   # nr <- nrow(data)
   # if (any(unlist(data[(nr-1):nr, symptoms]), na.rm = T)) {
@@ -127,9 +66,6 @@ is_new_onset <- function(data, symptoms, day_t, onset_window_length=2,
   
 }
 
-
-
-
 ########################################################################
 ## arguments and parameters
 ########################################################################
@@ -139,10 +75,10 @@ args <- commandArgs(trailingOnly = TRUE)
 timestamp <- args[1]
 twins_annofile <- args[2]
 mapfile <- args[3]
-zoe_preds_file <- args[4]
-wdir <- args[5]
-max_days_past <- as.numeric(args[6])
-max_carry_forward <- as.numeric(args[7])
+wdir <- args[4]
+onset_window_length <- as.numeric(args[5])
+stat_window_length <- as.numeric(args[6])
+prior_status_method <- args[7]
 
 # load data
 a <- distinct(fread(sprintf("%s/cleaned_twins_assessments_export_%s.csv", wdir, timestamp), data.table=F))
@@ -177,7 +113,7 @@ a <- dplyr::filter(a, updated_at != "-- ::") %>% mutate(date_updated_at = as_dat
 p <- dplyr::filter(p, updated_at != "-- ::") %>% mutate(date_updated_at = as_date(updated_at)) %>% 
   left_join(id_map, by=c("id"="app_id"))
 
-zoe <- read_csv(file.path(wdir, zoe_preds_file)) 
+
 
 ########################################################################
 ## checks
@@ -243,7 +179,11 @@ new_onset <- a %>%
   mutate(
     new_onset = map(
       data, 
-      ~is_new_onset(.x, symptoms = a_vars_filter, day_t = timestamp_date)
+      ~is_new_onset(.x, symptoms = a_vars_filter, 
+                    day_t = timestamp_date, 
+                    stat_window_length = stat_window_length,
+                    onset_window_length = onset_window_length,
+                    prior_status_method = prior_status_method)
     )
   ) %>% 
   dplyr::select(-data) %>% 
@@ -260,6 +200,11 @@ new_onset_summary <- new_onset %>%
 
 write_csv(new_onset_summary, file.path(wdir, sprintf("new_onset_%s.csv", timestamp)))
 
+
+########################################################################
+## Plot new onset counts matrix
+########################################################################
+
 p_symptom_count <- new_onset_summary %>% 
   ungroup() %>% 
   count(n_new_onset, n_prior) %>% 
@@ -271,110 +216,4 @@ p_symptom_count <- new_onset_summary %>%
   ylab("number of 'active' symptoms three days ago")+
   theme_bw()
 
-p_new_onset_history <-new_onset_summary %>% 
-  dplyr::filter(n_new_onset > 0) %>% 
-  ungroup() %>% 
-  distinct(study_no, n_new_onset, n_prior) %>% 
-  left_join(a) %>% 
-  dplyr::select(date_updated_at, study_no, a_vars_filter, n_new_onset, n_prior) %>% 
-  gather(symptom, value, a_vars_filter) %>% 
-  arrange(study_no, symptom) %>% 
-  # dplyr::filter(study_no==971) %>%
-  mutate(presence = ifelse(is.na(value), "no data",ifelse(value, "present", "absent")),
-         sn_anno = sprintf("%d [%d new, %d prior]", study_no, n_new_onset, n_prior)) %>% 
-  mutate(sn_anno = fct_reorder(sn_anno, -n_new_onset)) %>% 
-  ggplot(aes(x=date_updated_at, y=symptom, fill=presence))+
-  geom_tile()+
-  facet_wrap(~sn_anno, ncol=4)+
-  scale_fill_manual(values = c(present="red", absent="green", "no data" = "lightgrey"),
-                    name="symptom presence")+
-  theme_bw()+
-  geom_vline(xintercept=as.numeric(timestamp_date-2)-0.5, linetype=2)+
-  xlab("assessment date")
-
-message("generating Zoe prediction plots")
-
-ggsave(plot = p_new_onset_history, file.path(wdir, sprintf("new_onset_history_%s.svg", timestamp)), width = 10, height = 15)
 ggsave(plot = p_symptom_count, file.path(wdir, sprintf("new_onset_symptom_count_%s.svg", timestamp)))
-
-zoe_symptoms <- c(binary_symptoms, multicat_symptoms)
-
-zoe_plotdat <- zoe %>% 
-  top_n(40, p_predicted_covid) %>% 
-  dplyr::select(study_no, matches("predicted_covid")) %>% 
-  left_join(a) %>% 
-  mutate_at(vars(binary_symptoms), as.numeric) %>%
-  mutate(
-    shortness_of_breath = recode(na_if(shortness_of_breath, ""), 
-                                 'no'=0,'mild'=1, 'significant'=2, 'severe'=3, .missing=0)/3,
-    fatigue = recode(na_if(fatigue, ""), 'no'=0,'mild'=1, 'severe'=2, .missing=0)/2
-  ) %>%
-  dplyr::select(date_updated_at, study_no, zoe_symptoms, matches("predicted_covid")) %>% 
-  gather(symptom, value, zoe_symptoms) %>% 
-  arrange(study_no, symptom) %>% 
-  mutate(sn_anno = sprintf("%d [p_zoe=%s]", study_no, round(p_predicted_covid, 2))) %>%
-  mutate(sn_anno = fct_reorder(sn_anno, -p_predicted_covid)) 
-
-# top 40
-p_zoe_40 <- zoe_plotdat %>% 
-  ggplot(aes(x=date_updated_at, y=symptom, fill=value))+
-  geom_tile()+
-  facet_wrap(~sn_anno, ncol=4)+
-  scale_fill_gradient(name="symptom severity", low = "green", high = "red")+
-  theme_bw()+
-  geom_vline(xintercept=as.numeric(timestamp_date-2)-0.5, linetype=2)+
-  xlab("assessment date")
-
-ggsave(plot = p_zoe_40, file.path(wdir, sprintf("Zoe_top40_history_%s.svg", timestamp)), width = 10, height = 15)
-
-########################################################################
-## symptomatic periods
-########################################################################
-
-message("calculating symptomatic periods")
-
-# summary per symptom and per twin
-candidates <- a %>%
-  group_by(patient_id) %>%
-  nest() %>%
-  mutate(
-    last_episode = map(data, ~code_last_episode(.x, vars=a_vars_filter))  #KEY STEP
-  ) %>%
-  dplyr::select(patient_id, last_episode) %>%
-  unnest(last_episode) %>%
-  dplyr::filter(!is.na(onset_last_positive_period)) %>%
-  dplyr::filter(onset_last_positive_period > as_date(substr(timestamp, 1, 8)) -  max_days_past) %>% # retain only symptomatic periods starting within last 'max_days_past' days
-  arrange(desc(onset_last_positive_period), !(is.na(end_of_last_positive_period)), end_of_last_positive_period) %>% 
-  left_join(p_summary, by=c("patient_id" = "id")) %>%
-  left_join(a_summary, by="patient_id") %>%
-  dplyr::select(study_no, everything())
-
-message("summarising symptomatic periods")
-
-# summarise further over symptoms to get one line per twin
-# ignore 'negative_health_status' when summarising, to maintain specificity
-candidates_summary <- candidates %>% 
-  group_by(patient_id, study_no) %>% 
-  dplyr::filter(variable != "negative_health_status") %>% 
-  summarise(n_symptoms = dplyr::n(), 
-            symptoms = paste0(variable, collapse = ", "),
-            `most recent positive report [any_symptom]` = max(most_recent_positive, na.rm = T),
-            `onset of last positive period [most recent over symptoms]` = max(onset_last_positive_period, na.rm = T),
-            `onset of last positive period [earliest over symptoms]` = min(onset_last_positive_period, na.rm = T),
-            `any active symptom not reported as over` = any(is.na(end_of_last_positive_period))
-  ) %>% 
-  arrange(
-    desc(n_symptoms),
-    desc(`most recent positive report [any_symptom]`),
-    desc(`onset of last positive period [earliest over symptoms]`)
-  ) %>%
-  left_join(p_summary, by=c("patient_id" = "id", "study_no")) %>%
-  left_join(a_summary, by="patient_id") %>% 
-  dplyr::select(study_no, sex_mismatch, birthyear_diff, twinSN_has_multiple_accounts, everything())
-
-write_csv(candidates, path = sprintf("%s/symptomatic_twins_PerTwinPerSymptom_%s.csv", wdir, timestamp))
-write_csv(candidates_summary, path = sprintf("%s/symptomatic_twins_PerTwin_%s.csv", wdir, timestamp))
-
-cat("\n\n---Formatting completed---\n\n")
-
-
