@@ -84,6 +84,7 @@ echo "-------------------------------------------------------------------------"
 printf "\n\n\n\n\n"
 
 cd $sdir
-Rscript plot_new_onset_histories.R $timestamp $mapfile $zoe_preds $wdir
+Rscript plot_new_onset_histories.R $timestamp $mapfile $zoe_preds $wdir \
+$onset_window_length $stat_window_length
 
 echo 'Wrapper script completed.'

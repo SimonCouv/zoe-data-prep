@@ -37,7 +37,7 @@ is_new_onset <- function(data, symptoms, day_t, onset_window_length=2,
     
     # get assessments dates within status-defining window
     d <- x$date_updated_at
-    d1 <- d[d > day_t - (onset_window_length + stat_window_length)]
+    d1 <- d[d >= day_t - (onset_window_length + stat_window_length)]
     d2 <- d[d < day_t - onset_window_length]
     d_stat <- intersect(d1, d2)
     
@@ -95,11 +95,11 @@ p_vars_anno <- c("interacted_with_covid", "contact_health_worker", "classic_symp
                  "has_lung_disease", "is_smoker", "does_chemotherapy", 
                  "has_cancer", "has_kidney_disease", "already_had_covid",
                  "interacted_patients_with_covid", "classic_symptoms_days_ago")
-a_vars_filter <- c("fever", "persistent_cough", "fatigue_binary", "shortness_of_breath_binary", "delirium", "loss_of_smell")
 a_vars_anno <- c("had_covid_test", "treated_patients_with_covid", "tested_covid_positive")
 binary_symptoms <- c('persistent_cough', 'delirium','fever', 'diarrhoea', 'abdominal_pain', 'chest_pain', 'hoarse_voice', 'skipped_meals', 'loss_of_smell', 'headache', 'sore_throat')
 multicat_symptoms <- c('shortness_of_breath', 'fatigue')
 collapsed_symptoms <- c('fatigue_binary', 'shortness_of_breath_binary')
+a_vars_filter <- c(binary_symptoms, collapsed_symptoms)
 
 # Impute negative symptoms from 'healthy' health_status when symptoms are NA
 for (v in c(multicat_symptoms, binary_symptoms, collapsed_symptoms)){

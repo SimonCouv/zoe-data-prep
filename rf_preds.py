@@ -73,7 +73,7 @@ a_recent = a.loc[timestamp_date-a["date_updated_at"]< pd.Timedelta(onset_window_
 # subset to new onset twins
 new_onset_keep = new_onset.loc[(new_onset['n_new_onset'] >= min_new_onset) &
 (new_onset['n_prior'] <= max_prior)]
-a_recent = a_recent.loc[a_recent['patient_id'].isin(new_onset['patient_id'])]
+a_recent = a_recent.loc[a_recent['patient_id'].isin(new_onset_keep['patient_id'])]
 
 # calculated values
 p["prisma"] = (p["age"]>85).astype(int) + (p["gender"]==0).astype(int) + p["needs_help"].astype(int) + p["housebound_problems"].astype(int) + p["help_available"].astype(int) + p["mobility_aid"].astype(int)
