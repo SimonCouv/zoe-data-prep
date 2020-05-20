@@ -22,6 +22,7 @@ a <- distinct(fread(sprintf("%s/linked_cleaned_twins_assessments_export_%s.csv",
   rename(study_no = TwinSN)
 p <- distinct(fread(sprintf("%s/linked_cleaned_twins_patients_export_geocodes_%s.csv", wdir, timestamp), data.table=F)) %>% 
   rename(study_no = TwinSN)
+ct <- distinct(fread(sprintf("%s/linked_twins_covid_test_export_%s.csv", wdir, timestamp), data.table=F))
 zoe <- read_csv(file.path(wdir,zoe_preds_file))
 
 timestamp_date <- as_date(substr(timestamp, 1, 8))
@@ -56,9 +57,11 @@ zoe_symptom_abbrevs <- map_chr(
 zoe_symptom_map <- tibble(zoe_symptom_abbrevs, zoe_symptoms)
 names(zoe_symptom_map) <- c("abbrev", "symptom")
 
+# format COVID test results
+ct_tested <- ct$study_no[nchar(ct$result) > 0]
 
 plotdat <- zoe %>% 
-  dplyr::select(study_no, matches("predicted_covid")) %>% 
+  dplyr::select(study_no, age, matches("predicted_covid")) %>% 
   left_join(a, by="study_no") %>% 
   mutate_at(vars(binary_symptoms), as.numeric) %>%
   mutate(
@@ -66,16 +69,17 @@ plotdat <- zoe %>%
                                  'no'=0,'mild'=1, 'significant'=2, 'severe'=3, .missing=0)/3,
     fatigue = recode(na_if(fatigue, ""), 'no'=0,'mild'=1, 'severe'=2, .missing=0)/2
   ) %>%
-  dplyr::select(date_updated_at, study_no, zoe_symptoms, matches("predicted_covid")) %>% 
-  gather(symptom, value, zoe_symptoms) %>% 
+  dplyr::select(date_updated_at, study_no, age, zoe_symptoms, matches("predicted_covid")) %>% 
+  gather(symptom, value, c(zoe_symptoms)) %>% 
   left_join(zoe_symptom_map, by="symptom") %>% 
+  mutate(tested_str = ifelse(study_no %in% ct_tested, "; TESTED", "")) %>% 
   arrange(study_no, abbrev) %>% 
-  mutate(sn_anno = sprintf("%d [p_zoe=%s]", study_no, round(p_predicted_covid, 2))) %>%
+  mutate(sn_anno = sprintf("%d [%dy, p_zoe=%s%s]", 
+                           study_no, age, 
+                           round(p_predicted_covid, 2), tested_str)) %>%
   mutate(sn_anno = fct_reorder(sn_anno, -p_predicted_covid))
 
 # ggsave(plot = p_new_onset, file.path(wdir, sprintf("new_onset_history_%s.svg", timestamp)), width = 10, height = 15)
-
-
 nr <- 8
 nc <- 4
 

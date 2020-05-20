@@ -77,7 +77,7 @@ rf2_joblib="rf_joblibs/Grouped_RF_2_12_05.joblib"
 
 echo $tassc $tpatc $zoe_preds $timestamp $rf2_joblib
 
-python3 $sdir/rf_preds.py $tassc $tpatc $zoe_preds $new_onsetfile $mapfile \
+python3 $sdir/rf_preds.py $tassc $tpatc $ttest $zoe_preds $new_onsetfile $mapfile \
 $timestamp $rf2_joblib $onset_window_length 0 1
 
 printf "\n\n\n\n\n"
@@ -87,7 +87,7 @@ echo "-------------------------------------------------------------------------"
 printf "\n\n\n\n\n"
 
 cd $sdir
-Rscript plot_new_onset_histories.R $timestamp $mapfile $zoe_preds $wdir \
+Rscript plot_new_onset_histories.R $timestamp $zoe_preds $wdir \
 $onset_window_length $stat_window_length
 
 echo 'Wrapper script completed.'
