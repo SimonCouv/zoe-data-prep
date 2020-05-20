@@ -80,9 +80,12 @@ onset_window_length <- as.numeric(args[5])
 stat_window_length <- as.numeric(args[6])
 prior_status_method <- args[7]
 
+
 # load data
-a <- distinct(fread(sprintf("%s/cleaned_twins_assessments_export_%s.csv", wdir, timestamp), data.table=F))
-p <- distinct(fread(sprintf("%s/cleaned_twins_patients_export_geocodes_%s.csv", wdir, timestamp), data.table=F))
+a <- distinct(fread(sprintf("%s/linked_cleaned_twins_assessments_export_%s.csv", wdir, timestamp), data.table=F))%>% 
+  rename(study_no = TwinSN)
+p <- distinct(fread(sprintf("%s/linked_cleaned_twins_patients_export_geocodes_%s.csv", wdir, timestamp), data.table=F))%>% 
+  rename(study_no = TwinSN)
 twins_anno <- fread(twins_annofile) %>% 
   setnames(tolower(names(.)))
 id_map <- distinct(fread(mapfile) %>% setnames(c("study_no", "app_id")))
@@ -107,12 +110,8 @@ for (v in c(multicat_symptoms, binary_symptoms, collapsed_symptoms)){
 }
 
 # parse dates, drop few individuals with specific invalid date format
-# merge with
-a <- dplyr::filter(a, updated_at != "-- ::") %>% mutate(date_updated_at = as_date(updated_at)) %>% 
-  left_join(id_map, by=c("patient_id"="app_id"))
-p <- dplyr::filter(p, updated_at != "-- ::") %>% mutate(date_updated_at = as_date(updated_at)) %>% 
-  left_join(id_map, by=c("id"="app_id"))
-
+a <- dplyr::filter(a, updated_at != "-- ::") %>% mutate(date_updated_at = as_date(updated_at))
+p <- dplyr::filter(p, updated_at != "-- ::") %>% mutate(date_updated_at = as_date(updated_at))
 
 
 ########################################################################

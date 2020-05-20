@@ -38,15 +38,18 @@ python3 $sdir/pipeline.py -t GB \
 
 printf "\n\n\n\n\n"
 echo "-------------------------------------------------------------------------"
-echo "link twin ID for sharing (only)"
+echo "link twin ID"
 echo "-------------------------------------------------------------------------"
 printf "\n\n\n\n\n"
 
 tpatc_linked="linked_$tpatc"
 tassc_linked="linked_$tassc"
+ttest="twins_covid_test_export_$timestamp.csv"
+ttest_linked="linked_$ttest"
 
-python3 $sdir/link_twins_anno.py $tpatc $tassc $tpatc_linked $tassc_linked $mapfile
-cp $tpatc_linked $tassc_linked $ddir/Twin_Extract
+python3 $sdir/link_twins_anno.py $tpatc $tassc $tpatc_linked $tassc_linked \
+$ttest $ttest_linked $mapfile
+cp $tpatc_linked $tassc_linked $ttest_linked $ddir/Twin_Extract
 echo "twin ID linking complete; files copied to $ddir/Twin_Extract."
 
 printf "\n\n\n\n\n"
