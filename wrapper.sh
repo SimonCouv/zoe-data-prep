@@ -5,8 +5,10 @@ mapfile=$4
 twins_annofile=$5
 onset_window_length=$6
 stat_window_length=$7
+onset_status_method=$8
 
-
+# clean version of status method
+smc=$(echo $onset_status_method | sed -e 's/%//')
 sdir=$(pwd)
 
 printf "\n\n\n\n\n"
@@ -61,7 +63,9 @@ printf "\n\n\n\n\n"
 cd $sdir
 
 Rscript collect_symptomatic_twins.R $timestamp $twins_annofile $mapfile \
-$wdir $onset_window_length $stat_window_length 'any'
+$wdir $onset_window_length $stat_window_length 'any' $onset_status_method
+
+new_onsetfile="new_onset_onset${onset_window_length}_stat${stat_window_length}_${smc}_$timestamp.csv"
 
 printf "\n\n\n\n\n"
 echo "-------------------------------------------------------------------------"
@@ -71,14 +75,19 @@ printf "\n\n\n\n\n"
 
 cd $wdir
 
-new_onsetfile="new_onset_$timestamp.csv"
-zoe_preds="Zoe_RF2_predictions_$timestamp.csv"
-rf2_joblib="rf_joblibs/Grouped_RF_2_12_05.joblib"
+if [ $onset_window_length -lt 4 ]
+then
+  zoe_preds="Zoe_RF2_predictions_onset${onset_window_length}_stat${stat_window_length}_${smc}_$timestamp.csv"
+  rf_joblib="rf_joblibs/Grouped_RF_${onset_window_length}_12_05.joblib"
 
-echo $tassc $tpatc $zoe_preds $timestamp $rf2_joblib
-
-python3 $sdir/rf_preds.py $tassc $tpatc $ttest $zoe_preds $new_onsetfile $mapfile \
-$timestamp $rf2_joblib $onset_window_length 0 1
+  echo $tassc $tpatc $zoe_preds $timestamp $rf_joblib
+    
+  python3 $sdir/rf_preds.py $tassc $tpatc $ttest $zoe_preds $new_onsetfile $mapfile \
+  $timestamp $rf_joblib $onset_window_length 0 1 5
+else
+  echo 'RF model not applicable for onset window length above 3 days. Predictions skipped.'
+  zoe_preds="skipped"
+fi
 
 printf "\n\n\n\n\n"
 echo "-------------------------------------------------------------------------"
@@ -87,7 +96,9 @@ echo "-------------------------------------------------------------------------"
 printf "\n\n\n\n\n"
 
 cd $sdir
-Rscript plot_new_onset_histories.R $timestamp $zoe_preds $wdir \
-$onset_window_length $stat_window_length
+hist_plot_file="new_onset_history_onset${onset_window_length}_stat${stat_window_length}_${smc}_$timestamp.pdf"
+
+Rscript plot_new_onset_histories.R $timestamp $zoe_preds $new_onsetfile $wdir \
+$onset_window_length $stat_window_length $hist_plot_file 0 1
 
 echo 'Wrapper script completed.'

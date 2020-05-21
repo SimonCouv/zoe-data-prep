@@ -15,15 +15,22 @@ library(tidyselect)
 library(ggplot2)
 library(forcats)
 
-is_new_onset <- function(data, symptoms, day_t, onset_window_length=2, 
+is_new_onset <- function(data, symptoms, day_t, onset_window_length=2, onset_status_method,
                          stat_window_length=12, prior_status_method = c("last", "any")){
   
   prior_status_method <- match.arg(prior_status_method)
   
   #### any positive report in <window_length> days before <day_t> -------------
+
   data_onset_in <- data[data$date_updated_at + onset_window_length >= day_t, symptoms]
-  pos_in_window <- apply(data_onset_in, 2, function(x)any(x,na.rm = T))
-  
+  if (onset_status_method=='any'){
+    pos_in_window <- apply(data_onset_in, 2, function(x)any(x,na.rm = T))
+  } else if (str_detect(onset_status_method, '%')){
+    tresh <- as.numeric(str_match(onset_status_method, "^(\\d*)%$")[,2])
+    s <- apply(data_onset_in, 2, function(x)sum(x,na.rm = T))
+    pos_in_window <- s >= tresh/100*onset_window_length
+  }
+
   ### prior status ----------------------------------------------------
   # allow for reporting dates to differ between symptoms (-> drop_na per symptom in for loop)
   status_before <- rep(FALSE, length(symptoms))
@@ -79,7 +86,9 @@ wdir <- args[4]
 onset_window_length <- as.numeric(args[5])
 stat_window_length <- as.numeric(args[6])
 prior_status_method <- args[7]
+onset_status_method <- args[8]
 
+sm_clean = str_extract(onset_status_method, '\\w+')
 
 # load data
 a <- distinct(fread(sprintf("%s/linked_cleaned_twins_assessments_export_%s.csv", wdir, timestamp), data.table=F))%>% 
@@ -173,16 +182,18 @@ a_summary <- a %>%
 message("calculating new onset of symptoms")
 
 new_onset <- a %>% 
+  mutate(any_symptom = apply(.[,a_vars_filter],1, function(x)any(x, na.rm=T))) %>%
   group_by(patient_id, study_no) %>% 
   nest() %>% 
   mutate(
     new_onset = map(
       data, 
-      ~is_new_onset(.x, symptoms = a_vars_filter, 
+      ~is_new_onset(.x, symptoms = c(a_vars_filter, "any_symptom"), 
                     day_t = timestamp_date, 
                     stat_window_length = stat_window_length,
                     onset_window_length = onset_window_length,
-                    prior_status_method = prior_status_method)
+                    prior_status_method = prior_status_method,
+                    onset_status_method = onset_status_method)
     )
   ) %>% 
   dplyr::select(-data) %>% 
@@ -197,7 +208,8 @@ new_onset_summary <- new_onset %>%
   ) %>% 
   arrange(desc(n_new_onset), n_prior)
 
-write_csv(new_onset_summary, file.path(wdir, sprintf("new_onset_%s.csv", timestamp)))
+write_csv(new_onset_summary, file.path(wdir, sprintf("new_onset_onset%d_stat%d_%s_%s.csv", 
+  onset_window_length, stat_window_length, sm_clean, timestamp)))
 
 
 ########################################################################
@@ -215,4 +227,4 @@ p_symptom_count <- new_onset_summary %>%
   ylab("number of 'active' symptoms three days ago")+
   theme_bw()
 
-ggsave(plot = p_symptom_count, file.path(wdir, sprintf("new_onset_symptom_count_%s.svg", timestamp)))
+ggsave(plot = p_symptom_count, file.path(wdir, sprintf("new_onset_symptom_count_onset%d_stat%d_%s_%s.svg",onset_window_length, stat_window_length, sm_clean, timestamp)))
