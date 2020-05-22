@@ -31,7 +31,7 @@ library(tidyr)
 
 ```{r}
 
-a <- fread(sprintf("%s/cleaned_twins_assessments_export_%s.csv", params$wdir, params$timestamp))
+a <- fread(sprintf("%s/linked_cleaned_twins_assessments_export_%s.csv", params$wdir, params$timestamp))
 timestamp_date <- as_date(substr(timestamp, 1, 8))
 ```
 
@@ -68,7 +68,7 @@ p_global <- participation %>%
 
 p_rank <- ggplot(participation, aes(x=date_updated_at, y=n,fill=n_prev_sub))+
   geom_bar(stat = "identity") +
-  scale_x_date(date_breaks = "1 day")+
+  scale_x_date(date_breaks = "5 days")+
   theme_bw()+
   scale_fill_gradient(low = "blue", high = "red", name="number of previous submissions by individual")+
   theme(axis.text.x = element_text(angle = 90), legend.position = "top")+
@@ -77,13 +77,12 @@ p_rank <- ggplot(participation, aes(x=date_updated_at, y=n,fill=n_prev_sub))+
 
 p_novel <- ggplot(participation, aes(x=date_updated_at, y=n,fill=n_prev_sub==0))+
   geom_bar(stat = "identity") +
-  scale_x_date(date_breaks = "1 day")+
+  scale_x_date(date_breaks = "5 days")+
   theme_bw()+
   scale_fill_discrete(name="first submission by individual")+
   theme(axis.text.x = element_text(angle = 90), legend.position = "top")+
   xlab("date of submission")+
   ylab("number of reports from twins")
-
 
 p_global/(p_rank+p_novel)
 
@@ -113,7 +112,7 @@ a %>%
   dplyr::filter(date_updated_at >= date_first_log & date_updated_at < timestamp_date) %>% 
   ggplot(aes(x=date_updated_at, y=date_first_log, fill=n))+
   geom_tile()+
-  geom_text(aes(label=n), size=2)+
+  geom_text(aes(label=n), size=1)+
   theme_bw()+
   ylab("date of first report")+
   xlab("report day")+
@@ -151,7 +150,7 @@ retention <- a %>%
 retention %>% 
   ggplot(aes(x=date_updated_at, y=date_first_log, fill=retention))+
   geom_tile()+
-  geom_text(aes(label=round(retention)), size=3)+
+  geom_text(aes(label=round(retention)), size=1)+
   theme_bw()+
   ylab("date of first report")+
   xlab("report day")+
