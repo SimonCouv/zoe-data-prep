@@ -76,7 +76,7 @@ ct_tested <- ct$study_no[nchar(ct$result) > 0]
 new_onset_keep <- dplyr::filter(new_onset, n_new_onset >= min_new_onset, n_prior <= max_prior)
 
 plotdat_tmp <- a %>%
-  dplyr::filter(patient_id %in% new_onset_keep$patient_id) %>%  
+  dplyr::filter(patient_id %in% c(new_onset_keep$patient_id, new_pos$patient_id)) %>%  
   mutate(any_symptom = apply(.[,a_vars_filter],1, function(x)any(x, na.rm=T))) %>%
   mutate_at(vars(binary_symptoms), as.numeric) %>%
   mutate(
