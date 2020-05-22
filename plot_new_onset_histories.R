@@ -106,7 +106,7 @@ if (zoe_preds_file != "skipped"){
 
 # ggsave(plot = p_new_onset, file.path(wdir, sprintf("new_onset_history_%s.svg", timestamp)), width = 10, height = 15)
 nr <- 8
-nc <- 4
+nc <- 2
 
 pdf(file.path(wdir, hist_plot_file), width = 10 , height = 15)
 for (i in 1:ceiling(n_distinct(plotdat$study_no)/(nr*nc))){
