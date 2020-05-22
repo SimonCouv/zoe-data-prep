@@ -63,7 +63,7 @@ printf "\n\n\n\n\n"
 cd $sdir
 
 Rscript collect_symptomatic_twins.R $timestamp $twins_annofile $mapfile \
-$wdir $onset_window_length $stat_window_length 'any' $onset_status_method
+$wdir $onset_window_length $stat_window_length 'any' $onset_status_method 5
 
 new_onsetfile="new_onset_onset${onset_window_length}_stat${stat_window_length}_${smc}_$timestamp.csv"
 new_posfile="new_pos_$timestamp.csv"
@@ -100,6 +100,6 @@ cd $sdir
 hist_plot_file="new_onset_history_onset${onset_window_length}_stat${stat_window_length}_${smc}_$timestamp.pdf"
 
 Rscript plot_new_onset_histories.R $timestamp $zoe_preds $new_onsetfile \
-$new_posfile $wdir $onset_window_length $stat_window_length $hist_plot_file 0 1 5
+$new_posfile $wdir $onset_window_length $stat_window_length $hist_plot_file 0 1
 
 echo 'Wrapper script completed.'

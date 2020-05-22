@@ -230,6 +230,8 @@ ggsave(plot = p_symptom_count, file.path(wdir, sprintf("new_onset_symptom_count_
 ## Collect individuals who recently tested positive
 ########################################################################
 
+cat("test_window_length parameter: ", test_window_length)
+
 new_pos <- ct %>% 
   dplyr::filter(result == "positive") %>% 
   mutate(date_selection = ifelse(nchar(date_taken_specific)>0,
