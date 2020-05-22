@@ -66,6 +66,7 @@ Rscript collect_symptomatic_twins.R $timestamp $twins_annofile $mapfile \
 $wdir $onset_window_length $stat_window_length 'any' $onset_status_method
 
 new_onsetfile="new_onset_onset${onset_window_length}_stat${stat_window_length}_${smc}_$timestamp.csv"
+new_posfile="new_pos_$timestamp.csv"
 
 printf "\n\n\n\n\n"
 echo "-------------------------------------------------------------------------"
@@ -81,9 +82,9 @@ then
   rf_joblib="rf_joblibs/Grouped_RF_${onset_window_length}_12_05.joblib"
 
   echo $tassc $tpatc $zoe_preds $timestamp $rf_joblib
-    
-  python3 $sdir/rf_preds.py $tassc $tpatc $ttest $zoe_preds $new_onsetfile $mapfile \
-  $timestamp $rf_joblib $onset_window_length 0 1 5
+
+  python3 $sdir/rf_preds.py $tassc $tpatc $ttest $zoe_preds $new_onsetfile \
+  $new_posfile $mapfile $timestamp $rf_joblib $onset_window_length 0 1 5
 else
   echo 'RF model not applicable for onset window length above 3 days. Predictions skipped.'
   zoe_preds="skipped"
@@ -98,7 +99,7 @@ printf "\n\n\n\n\n"
 cd $sdir
 hist_plot_file="new_onset_history_onset${onset_window_length}_stat${stat_window_length}_${smc}_$timestamp.pdf"
 
-Rscript plot_new_onset_histories.R $timestamp $zoe_preds $new_onsetfile $wdir \
-$onset_window_length $stat_window_length $hist_plot_file 0 1
+Rscript plot_new_onset_histories.R $timestamp $zoe_preds $new_onsetfile \
+$new_posfile $wdir $onset_window_length $stat_window_length $hist_plot_file 0 1
 
 echo 'Wrapper script completed.'

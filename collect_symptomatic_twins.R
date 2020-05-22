@@ -95,6 +95,8 @@ a <- distinct(fread(sprintf("%s/linked_cleaned_twins_assessments_export_%s.csv",
   rename(study_no = TwinSN)
 p <- distinct(fread(sprintf("%s/linked_cleaned_twins_patients_export_geocodes_%s.csv", wdir, timestamp), data.table=F))%>% 
   rename(study_no = TwinSN)
+ct <- distinct(fread(sprintf("%s/linked_twins_covid_test_export_%s.csv", wdir, timestamp), data.table=F))%>% 
+  rename(study_no = TwinSN)
 twins_anno <- fread(twins_annofile) %>% 
   setnames(tolower(names(.)))
 id_map <- distinct(fread(mapfile) %>% setnames(c("study_no", "app_id")))
@@ -167,13 +169,6 @@ p_summary <- p %>%
   dplyr::select(-sex_phenobase2) %>% 
   dplyr::select(id, study_no, sex_mismatch, birthyear_diff, everything())
 
-# summarise covid info from assessment
-a_summary <- a %>% 
-  arrange(date_updated_at) %>%
-  dplyr::select(a_vars_anno, patient_id) %>% 
-  group_by(patient_id) %>% 
-  summarise_all(~paste0(unique(.x[nchar(.x)>0]), collapse = "->"))
-
 
 ########################################################################
 ## new onset
@@ -228,3 +223,19 @@ p_symptom_count <- new_onset_summary %>%
   theme_bw()
 
 ggsave(plot = p_symptom_count, file.path(wdir, sprintf("new_onset_symptom_count_onset%d_stat%d_%s_%s.svg",onset_window_length, stat_window_length, sm_clean, timestamp)))
+
+
+########################################################################
+## Collect individuals who recently tested positive
+########################################################################
+
+new_pos <- ct %>% 
+  dplyr::filter(result == "positive") %>% 
+  mutate(date_selection = ifelse(nchar(date_taken_specific)>0,
+                              date_taken_specific,
+                              date_taken_between_end)) %>% 
+  dplyr::filter(!is.na(date_selection)) %>% 
+  mutate(date_selection = as_date(date_selection)) %>% 
+  dplyr::filter(date_selection + onset_window_length >= timestamp_date)
+
+write_csv(new_pos, file.path(wdir, sprintf("new_pos_%s.csv", timestamp)))

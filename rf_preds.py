@@ -15,13 +15,14 @@ p_path = sys.argv[2]
 ct_path = sys.argv[3]
 predfile = sys.argv[4]
 new_onsetfile = sys.argv[5]
-mapfile = sys.argv[6]
-timestamp = sys.argv[7]
-rf2_filename = sys.argv[8]
-onset_window_length = int(sys.argv[9])
-max_prior = int(sys.argv[10])
-min_new_onset = int(sys.argv[11])
-test_window_length = int(sys.argv[12])
+new_posfile = sys.argv[6]
+mapfile = sys.argv[7]
+timestamp = sys.argv[8]
+rf2_filename = sys.argv[9]
+onset_window_length = int(sys.argv[10])
+max_prior = int(sys.argv[11])
+min_new_onset = int(sys.argv[12])
+test_window_length = int(sys.argv[13])
 
 timestamp_date = datetime.datetime.strptime(timestamp[0:8], '%Y%m%d')
 clf, idx_optimal, idx_high_sens, idx_high_spec, thresholds, fpr, tpr, FEATURES, ALL_SYMPTOMS, PAT_FEATURES = joblib.load(rf2_filename)
@@ -53,6 +54,7 @@ id_map = pd.read_csv(mapfile).drop_duplicates()
 id_map.columns = ['study_no', 'app_id']
 
 new_onset = pd.read_csv(new_onsetfile)
+new_pos = pd.read(new_posfile)
 
 print("loading complete")
 
@@ -76,13 +78,6 @@ a_recent = a.loc[timestamp_date-a["date_updated_at"]< pd.Timedelta(onset_window_
 # subset to new onset twins/tested twins
 new_onset_keep = new_onset.loc[(new_onset['n_new_onset'] >= min_new_onset) &
 (new_onset['n_prior'] <= max_prior)]
-
-ct = ct.loc[ct['result'] == 'positive']
-ct['date_selection'] = ct['date_taken_specific']
-ct.loc[ct['date_selection'].isnull(), 'date_selection'] = ct.loc[ct['date_selection'].isnull(), 'date_taken_between_end']
-ct = ct.dropna(axis=0, subset=['date_selection'])
-ct['date_selection'] = pd.to_datetime(ct['date_selection'])
-new_pos = ct.loc[ct['date_selection'] + pd.DateOffset(onset_window_length) >= timestamp_date]
 
 plot_indiv = list(new_onset_keep['patient_id']) + list(new_pos['patient_id'])
 

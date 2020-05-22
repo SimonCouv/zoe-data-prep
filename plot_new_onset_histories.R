@@ -15,19 +15,22 @@ args <- commandArgs(trailingOnly = TRUE)
 timestamp <- args[1]
 zoe_preds_file <- args[2]
 new_onsetfile <- args[3]
-wdir <- args[4]
-onset_window_length <- as.numeric(args[5])
-stat_window_length <- as.numeric(args[6])
-hist_plot_file <- args[7]
-max_prior = as.numeric(args[8])
-min_new_onset = as.numeric(args[9])
+new_posfile <- args[4]
+wdir <- args[5]
+onset_window_length <- as.numeric(args[6])
+stat_window_length <- as.numeric(args[7])
+hist_plot_file <- args[8]
+max_prior = as.numeric(args[9])
+min_new_onset = as.numeric(args[10])
 
 a <- distinct(fread(sprintf("%s/linked_cleaned_twins_assessments_export_%s.csv", wdir, timestamp), data.table=F)) %>% 
   rename(study_no = TwinSN)
 p <- distinct(fread(sprintf("%s/linked_cleaned_twins_patients_export_geocodes_%s.csv", wdir, timestamp), data.table=F)) %>% 
   rename(study_no = TwinSN)
-ct <- distinct(fread(sprintf("%s/linked_twins_covid_test_export_%s.csv", wdir, timestamp), data.table=F))
+ct <- distinct(fread(sprintf("%s/linked_twins_covid_test_export_%s.csv", wdir, timestamp), data.table=F))%>% 
+  rename(study_no = TwinSN)
 new_onset = read_csv(file.path(wdir, new_onsetfile))
+new_pos = read_csv(file.path(wdir, new_posfile))
 if (zoe_preds_file != "skipped"){
   zoe <- read_csv(file.path(wdir,zoe_preds_file))
 }
@@ -84,20 +87,21 @@ plotdat_tmp <- a %>%
   dplyr::select(date_updated_at, study_no, plot_symptoms) %>% 
   gather(symptom, value, c(plot_symptoms)) %>% 
   left_join(zoe_symptom_map, by="symptom") %>% 
-  mutate(tested_str = ifelse(study_no %in% ct_tested, "; TESTED", ""))
+  mutate(tested_str = ifelse(study_no %in% ct_tested, "; TESTED", ""),
+         newpos_str = ifelse(study_no %in% new_pos$study_no, "; NEWPOS", ""))
 
 if (zoe_preds_file != "skipped"){
   plotdat <- plotdat_tmp %>%
   left_join(zoe, by="study_no") %>%
-  mutate(sn_anno = sprintf("%d [%dy, p_zoe=%s%s]", 
+  mutate(sn_anno = sprintf("%d [%dy, p_zoe=%s%s%s]", 
                            study_no, age, 
-                           round(p_predicted_covid, 2), tested_str)) %>%
+                           round(p_predicted_covid, 2), tested_str, newpos_str)) %>%
   mutate(sn_anno = fct_reorder(sn_anno, -p_predicted_covid))
 } else {
   plotdat <- plotdat_tmp %>%
   left_join(dplyr::select(p, study_no, age), by="study_no") %>%
-  mutate(sn_anno = sprintf("%d [%dy%s]", 
-                           study_no, age, tested_str))
+  mutate(sn_anno = sprintf("%d [%dy%s%s]", 
+                           study_no, age, tested_str, newpos_str))
 }
 
 # ggsave(plot = p_new_onset, file.path(wdir, sprintf("new_onset_history_%s.svg", timestamp)), width = 10, height = 15)
