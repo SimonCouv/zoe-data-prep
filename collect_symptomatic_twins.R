@@ -87,6 +87,7 @@ onset_window_length <- as.numeric(args[5])
 stat_window_length <- as.numeric(args[6])
 prior_status_method <- args[7]
 onset_status_method <- args[8]
+test_window_length <- as.numeric(args[9])
 
 sm_clean = str_extract(onset_status_method, '\\w+')
 
@@ -236,6 +237,6 @@ new_pos <- ct %>%
                               date_taken_between_end)) %>% 
   dplyr::filter(!is.na(date_selection)) %>% 
   mutate(date_selection = as_date(date_selection)) %>% 
-  dplyr::filter(date_selection + onset_window_length >= timestamp_date)
+  dplyr::filter(date_selection + test_window_length >= timestamp_date)
 
 write_csv(new_pos, file.path(wdir, sprintf("new_pos_%s.csv", timestamp)))

@@ -22,7 +22,6 @@ rf2_filename = sys.argv[9]
 onset_window_length = int(sys.argv[10])
 max_prior = int(sys.argv[11])
 min_new_onset = int(sys.argv[12])
-test_window_length = int(sys.argv[13])
 
 timestamp_date = datetime.datetime.strptime(timestamp[0:8], '%Y%m%d')
 clf, idx_optimal, idx_high_sens, idx_high_spec, thresholds, fpr, tpr, FEATURES, ALL_SYMPTOMS, PAT_FEATURES = joblib.load(rf2_filename)
