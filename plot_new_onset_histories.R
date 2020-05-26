@@ -30,6 +30,9 @@ new_pos = read_csv(file.path(wdir, new_posfile))
 if (zoe_preds_file != "skipped"){
   zoe <- read_csv(file.path(wdir,zoe_preds_file))
 }
+zoe_symptom_map <- read_csv(symptom_map_file)
+
+message("data loaded successfully")
 
 timestamp_date <- as_date(substr(timestamp, 1, 8))
 
@@ -55,7 +58,6 @@ for (v in c(multicat_symptoms, binary_symptoms, collapsed_symptoms)){
 a <- dplyr::filter(a, updated_at != "-- ::") %>% mutate(date_updated_at = as_date(updated_at))
 p <- dplyr::filter(p, updated_at != "-- ::") %>% mutate(date_updated_at = as_date(updated_at))
 
-zoe_symptom_map <- read_csv(symptom_map_file)
 zoe_symptom_map <- bind_rows(zoe_symptom_map, tibble(abbrev="any", symptom="any_symptom"))
 plot_symptoms <- c(binary_symptoms, multicat_symptoms, "any_symptom")
 
@@ -93,6 +95,8 @@ if (zoe_preds_file != "skipped"){
   mutate(sn_anno = sprintf("%d [%dy%s%s]", 
                            study_no, age, tested_str, newpos_str))
 }
+
+message("pre-processing complete. Generating plots.")
 
 # ggsave(plot = p_new_onset, file.path(wdir, sprintf("new_onset_history_%s.svg", timestamp)), width = 10, height = 15)
 nr <- 8
