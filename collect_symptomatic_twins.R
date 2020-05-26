@@ -3,7 +3,7 @@
 ## setup
 ########################################################################
 
-
+library(R.utils)
 library(lubridate)
 library(dplyr)
 library(tidyr)
@@ -78,16 +78,12 @@ is_new_onset <- function(data, symptoms, day_t, onset_window_length=2, onset_sta
 ########################################################################
 
 # parse arguments
-args <- commandArgs(trailingOnly = TRUE)
-timestamp <- args[1]
-twins_annofile <- args[2]
-mapfile <- args[3]
-wdir <- args[4]
-onset_window_length <- as.numeric(args[5])
-stat_window_length <- as.numeric(args[6])
-prior_status_method <- args[7]
-onset_status_method <- args[8]
-test_window_length <- as.numeric(args[9])
+args <- commandArgs(trailingOnly = TRUE, asValues=T, adhoc=T)
+args$timestamp <- as.character(args$timestamp)
+
+attach(args)
+cat("arguments provided:\n\n")
+print(str(args))
 
 sm_clean = str_extract(onset_status_method, '\\w+')
 

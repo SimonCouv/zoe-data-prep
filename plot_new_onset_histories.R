@@ -9,19 +9,15 @@ library(tidyselect)
 library(ggplot2)
 library(forcats)
 library(ggforce)
+library(R.utils)
 
 # parse arguments
-args <- commandArgs(trailingOnly = TRUE)
-timestamp <- args[1]
-zoe_preds_file <- args[2]
-new_onsetfile <- args[3]
-new_posfile <- args[4]
-wdir <- args[5]
-onset_window_length <- as.numeric(args[6])
-stat_window_length <- as.numeric(args[7])
-hist_plot_file <- args[8]
-max_prior = as.numeric(args[9])
-min_new_onset = as.numeric(args[10])
+args <- commandArgs(trailingOnly = TRUE, asValues=T, adhoc=T)
+args$timestamp <- as.character(args$timestamp)
+
+attach(args)
+cat("arguments provided:\n\n")
+print(str(args))
 
 a <- distinct(fread(sprintf("%s/linked_cleaned_twins_assessments_export_%s.csv", wdir, timestamp), data.table=F)) %>% 
   rename(study_no = TwinSN)
@@ -59,15 +55,9 @@ for (v in c(multicat_symptoms, binary_symptoms, collapsed_symptoms)){
 a <- dplyr::filter(a, updated_at != "-- ::") %>% mutate(date_updated_at = as_date(updated_at))
 p <- dplyr::filter(p, updated_at != "-- ::") %>% mutate(date_updated_at = as_date(updated_at))
 
-zoe_symptoms <- c(binary_symptoms, multicat_symptoms)
-zoe_symptom_abbrevs <- map_chr(
-  zoe_symptoms, 
-  ~paste0(substr(unlist(strsplit(.x, split = "_")),1,1), collapse="")
-)
-zoe_symptom_map <- tibble(zoe_symptom_abbrevs, zoe_symptoms)
-names(zoe_symptom_map) <- c("abbrev", "symptom")
+zoe_symptom_map <- read_csv(symptom_map_file)
 zoe_symptom_map <- bind_rows(zoe_symptom_map, tibble(abbrev="any", symptom="any_symptom"))
-plot_symptoms <- c(zoe_symptoms, "any_symptom")
+plot_symptoms <- c(binary_symptoms, multicat_symptoms, "any_symptom")
 
 
 # format COVID test results

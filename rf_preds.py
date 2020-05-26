@@ -53,7 +53,7 @@ id_map = pd.read_csv(mapfile).drop_duplicates()
 id_map.columns = ['study_no', 'app_id']
 
 new_onset = pd.read_csv(new_onsetfile)
-new_pos = pd.read(new_posfile)
+new_pos = pd.read_csv(new_posfile)
 
 print("loading complete")
 

@@ -1,7 +1,13 @@
 library(data.table) # for efficient reading and merging of large files
 library(dplyr)
+library(R.utils)
 
-args <- commandArgs(trailingOnly=TRUE)
+args <- commandArgs(trailingOnly = TRUE, asValues=T, adhoc=T)
+args$timestamp <- as.character(args$timestamp)
+attach(args)
+cat("arguments provided:\n\n")
+print(str(args))
+
 
 if (length(args) < 5)
 {
@@ -20,12 +26,6 @@ if (length(args) < 5)
         print("")
 }
 
-
-timestamp <- args[1]
-ddir <- args[2]
-wdir <- args[3]
-mapfile <- args[4]
-twins_annofile <- args[5]
 
 
 setwd(wdir)

@@ -3,13 +3,28 @@ ddir=$2
 wdir=$3
 mapfile=$4
 twins_annofile=$5
-onset_window_length=$6
-stat_window_length=$7
-onset_status_method=$8
+symtom_mapfile=$6
+onset_window_length=$7
+stat_window_length=$8
+onset_status_method=$9
 
 # clean version of status method
 smc=$(echo $onset_status_method | sed -e 's/%//')
 sdir=$(pwd)
+
+
+# check working directory is clean
+if [ -z "$(git status --porcelain)" ]; then 
+	echo 'git commit hash:'
+	git rev-parse HEAD
+else 
+  echo 'working directory not clean'
+	git status
+	exit
+fi
+
+
+
 
 printf "\n\n\n\n\n"
 echo "-------------------------------------------------------------------------"
@@ -17,7 +32,12 @@ echo "subset_twins.R"
 echo "-------------------------------------------------------------------------"
 printf "\n\n\n\n\n"
 
-Rscript subset_twins.R $timestamp $ddir $wdir $mapfile $twins_annofile
+Rscript subset_twins.R\
+  -timestamp $timestamp\
+	-ddir $ddir\
+	-wdir $wdir\
+	-mapfile $mapfile\
+	-twins_annofile $twins_annofile
 
 printf "\n\n\n\n\n"
 echo "-------------------------------------------------------------------------"
@@ -62,8 +82,17 @@ printf "\n\n\n\n\n"
 
 cd $sdir
 
-Rscript collect_symptomatic_twins.R $timestamp $twins_annofile $mapfile \
-$wdir $onset_window_length $stat_window_length 'any' $onset_status_method 5
+
+Rscript collect_symptomatic_twins.R \
+  -timestamp $timestamp \
+	-twins_annofile $twins_annofile \
+	-mapfile $mapfile \
+  -wdir $wdir\
+	-onset_window_length $onset_window_length\
+	-stat_window_length $stat_window_length \
+	-prior_status_method 'any'\
+	-onset_status_method $onset_status_method\
+	-test_window_length 5
 
 new_onsetfile="new_onset_onset${onset_window_length}_stat${stat_window_length}_${smc}_$timestamp.csv"
 new_posfile="new_pos_$timestamp.csv"
@@ -99,7 +128,18 @@ printf "\n\n\n\n\n"
 cd $sdir
 hist_plot_file="new_onset_history_onset${onset_window_length}_stat${stat_window_length}_${smc}_$timestamp.pdf"
 
-Rscript plot_new_onset_histories.R $timestamp $zoe_preds $new_onsetfile \
-$new_posfile $wdir $onset_window_length $stat_window_length $hist_plot_file 0 1
+Rscript plot_new_onset_histories.R \
+  -timestamp $timestamp \
+	-zoe_preds_file $zoe_preds \
+	-new_onsetfile $new_onsetfile \
+  -new_posfile $new_posfile \
+	-symptom_map_file $symptom_mapfile \
+	-wdir $wdir \
+	-onset_window_length $onset_window_length\
+	-stat_window_length $stat_window_length \
+	-hist_plot_file $hist_plot_file \
+	-max_prior 0 \
+	-min_new_onset 1
+
 
 echo 'Wrapper script completed.'
