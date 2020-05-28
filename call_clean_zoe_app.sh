@@ -1,15 +1,14 @@
-#!/bin/bash
+#!/bin/bash -l
 
 #SBATCH -n 1
 #SBATCH -N 1
-#SBATCH --mem-per-cpu 180G
+#SBATCH --mem-per-cpu 350G
 #SBATCH -p brc
 
-#SBATCH --time=00-03:00:00    ## "days-hours:minutes:seconds"
+#SBATCH --time=01-00:00:00    ## "days-hours:minutes:seconds"
 
 #SBATCH -o /scratch/users/k1893262/twinsuk/COVID_radar/slurm_logs/slurm-%j-%x.out-%N
 
-timestamp=$1
 if [ -z $timestamp ]; then
 	echo 'No timestamp provided' 1>&2
 	exit 1
@@ -33,7 +32,6 @@ else
   exit 1
 fi
 
-module load apps/R/3.6.0
 module load devtools/python/3.7.3
 source ~/local/venv/3.7/bin/activate
 
