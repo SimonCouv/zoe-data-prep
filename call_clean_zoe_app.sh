@@ -2,7 +2,7 @@
 
 #SBATCH -n 1
 #SBATCH -N 1
-#SBATCH --mem-per-cpu 350G
+#SBATCH --mem-per-cpu 175G
 #SBATCH -p brc
 
 #SBATCH --time=01-00:00:00    ## "days-hours:minutes:seconds"
