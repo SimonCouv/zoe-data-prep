@@ -2,7 +2,7 @@
 
 #SBATCH -n 1
 #SBATCH -N 1
-#SBATCH --mem-per-cpu 175G
+#SBATCH --mem-per-cpu 100G
 #SBATCH -p brc
 
 #SBATCH --time=01-00:00:00    ## "days-hours:minutes:seconds"
@@ -14,6 +14,13 @@ if [ -z $timestamp ]; then
 	exit 1
 else
   echo "timestamp: $timestamp"
+fi
+
+if [ -z $pop ]; then
+	echo 'No population provided' 1>&2
+	exit 1
+else
+  echo "population: $pop"
 fi
 
 wdir='/scratch/users/k1893262/twinsuk/COVID_radar/data'
@@ -39,15 +46,15 @@ source ~/local/venv/3.7/bin/activate
 
 pat="patients_export_geocodes_${timestamp}.csv"
 ass="assessments_export_${timestamp}.csv"
-patc="cleaned_$pat"
-assc="cleaned_$ass"
+patc="cleaned_$(basename $pat .csv)_${pop}.csv"
+assc="cleaned_$(basename $ass .csv)_${pop}.csv"
 
 cd $wdir
 
-python3 $sdir/pipeline.py -t GB \
+python3 $sdir/pipeline.py \
   -p "$ddir/$pat" -a "$ddir/$ass" \
-	-po "$wdir/$patc" -ao "$wdir/$assc"
-	-t 'GB'
+	-po "$wdir/$patc" -ao "$wdir/$assc" \
+	-t "$pop" \
 	-ps 1
 
 
