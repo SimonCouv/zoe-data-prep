@@ -33,6 +33,9 @@ library(tidyr)
 
 a <- fread(sprintf("%s/linked_cleaned_twins_assessments_export_%s.csv", params$wdir, params$timestamp))
 timestamp_date <- as_date(substr(timestamp, 1, 8))
+
+ct <- fread(sprintf("%s/linked_twins_covid_test_export_%s.csv", params$wdir, params$timestamp))
+
 ```
 
 # Data
@@ -41,6 +44,32 @@ Timestamp: `r params$timestamp`
 
 
 Individuals in TUK with >= 1 assessment (after data cleaning): `r n_distinct(a$patient_id)`
+
+# Testing information
+
+```{r}
+
+total_with_test <- ct %>% 
+  dplyr::filter(nchar(result) > 0) %>%
+  {n_distinct(.$TwinSN)}
+
+total_with_test_result <- ct %>% 
+  dplyr::filter(result %in% c("positive", "negative")) %>% 
+  {n_distinct(.$TwinSN)}
+
+total_with_positive_test <- ct %>% 
+  dplyr::filter(result == "positive") %>%
+  {n_distinct(.$TwinSN)}
+
+```
+
+Total tested individuals: `r total_with_test`
+
+
+Of those, total with a result available: `r total_with_test_result`
+
+
+Of those, total with a positive result: `r total_with_positive_test`
 
 \newpage
 # Participation per day
